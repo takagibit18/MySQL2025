@@ -1,0 +1,74 @@
+{% extends "base_admin.html" %}
+{% block title %}员工权限 - 管理员{% endblock %}
+{% block content %}
+<div class="card shadow-sm p-3 mb-3">
+  <div class="d-flex justify-content-between align-items-center">
+    <h3 class="mb-0">员工权限（使用部门/职位表示）</h3>
+    <a class="btn btn-outline-secondary btn-sm" href="/sysadmin/ui">返回控制台</a>
+  </div>
+</div>
+
+<div class="card shadow-sm p-3 mb-3">
+  <h5>新增/编辑员工</h5>
+  <div class="row g-2">
+    <div class="col-12 col-md-3"><input class="form-control" id="s_id" placeholder="工号"></div>
+    <div class="col-12 col-md-3"><input class="form-control" id="s_name" placeholder="姓名"></div>
+    <div class="col-12 col-md-2"><select class="form-select" id="s_gender"><option>男</option><option>女</option></select></div>
+    <div class="col-12 col-md-2"><input class="form-control" id="s_phone" placeholder="电话"></div>
+    <div class="col-12 col-md-4"><input class="form-control" id="s_email" placeholder="邮箱"></div>
+    <div class="col-12 col-md-4"><input class="form-control" id="s_dept" placeholder="部门"></div>
+    <div class="col-12 col-md-4"><input class="form-control" id="s_title" placeholder="职位(权限)"></div>
+    <div class="col-12 text-end"><button class="btn btn-primary" onclick="saveStaff()">保存</button></div>
+  </div>
+</div>
+
+<div class="card shadow-sm p-0">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead><tr><th>工号</th><th>姓名</th><th>性别</th><th>电话</th><th>邮箱</th><th>部门</th><th>职位</th><th>操作</th></tr></thead>
+      <tbody id="stb"></tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block body_script %}
+<script>
+function loadStaff(){
+  getJson('/sysadmin/staff/list').then(r=>{
+    const tb = document.getElementById('stb');
+    tb.innerHTML='';
+    (r.items||[]).forEach(s=>{
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${s.工号}</td><td>${s.姓名}</td><td>${s.性别}</td><td>${s.联系电话}</td><td>${s.邮箱}</td><td>${s.部门}</td><td>${s.职位}</td>
+      <td><button class=\"btn btn-sm btn-outline-primary\" onclick='fillStaff(${JSON.stringify(s)})'>编辑</button></td>`;
+      tb.appendChild(tr);
+    })
+  })
+}
+function fillStaff(s){
+  document.getElementById('s_id').value = s.工号;
+  document.getElementById('s_name').value = s.姓名;
+  document.getElementById('s_gender').value = s.性别;
+  document.getElementById('s_phone').value = s.联系电话;
+  document.getElementById('s_email').value = s.邮箱;
+  document.getElementById('s_dept').value = s.部门;
+  document.getElementById('s_title').value = s.职位;
+}
+function saveStaff(){
+  const payload = {
+    工号: document.getElementById('s_id').value.trim(),
+    姓名: document.getElementById('s_name').value.trim(),
+    性别: document.getElementById('s_gender').value,
+    联系电话: document.getElementById('s_phone').value.trim(),
+    邮箱: document.getElementById('s_email').value.trim(),
+    部门: document.getElementById('s_dept').value.trim(),
+    职位: document.getElementById('s_title').value.trim(),
+  };
+  postJson('/sysadmin/staff/save', payload).then(r=>{ alert(r.error||'已保存'); loadStaff(); })
+}
+document.addEventListener('DOMContentLoaded', loadStaff);
+</script>
+{% endblock %}
+
+

@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}登录 - 机票系统{% endblock %}
+{% block content %}
+<div class="card shadow-sm p-4">
+  <h3 class="mb-3">登录</h3>
+  <form method="post" action="/api/login" class="row g-3">
+    {% csrf_token %}
+    <div class="col-12 col-md-6">
+      <label class="form-label">用户名</label>
+      <input class="form-control" type="text" name="username" required>
+    </div>
+    <div class="col-12 col-md-6">
+      <label class="form-label">密码</label>
+      <input class="form-control" type="password" name="password" required>
+    </div>
+    <div class="col-12">
+      <button class="btn btn-primary" type="submit">登录</button>
+      <span class="text-muted ms-2">没有账号？请联系管理员创建示例用户</span>
+    </div>
+  </form>
+</div>
+{% endblock %}

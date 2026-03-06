@@ -1,0 +1,192 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}学生管理{% endblock %}
+{% block content %}
+<div class="card shadow-sm">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <h4>学生管理</h4>
+    <button class="btn btn-primary btn-sm" onclick="showEditModal('student', null)">添加学生</button>
+  </div>
+  <div class="card-body">
+    <div id="studentsTable">
+      <div class="text-center">
+        <div class="spinner-border" role="status">
+          <span class="visually-hidden">加载中...</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 更改模态框 -->
+<div class="modal fade" id="editModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="editModalTitle">更改学生信息</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div id="editModalContent">
+          <!-- 动态内容 -->
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+        <button type="button" class="btn btn-danger" id="deleteBtn" onclick="deleteItem()" style="display:none;">删除</button>
+        <button type="button" class="btn btn-primary" onclick="saveItem()">保存</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block body_script %}
+<script>
+let currentType = '';
+let currentId = '';
+let editModal = null;
+
+(function(){
+  editModal = new bootstrap.Modal(document.getElementById('editModal'));
+  
+  function loadStudents(){
+    getJson('/admin_portal/students/list').then(data=>{
+      const tbody = document.getElementById('studentsTable');
+      if(data.items && data.items.length > 0){
+        let html = '<table class="table table-striped"><thead><tr><th>学号</th><th>姓名</th><th>性别</th><th>手机号</th><th>邮箱</th><th>班级</th><th>状态</th><th>操作</th></tr></thead><tbody>';
+        data.items.forEach(item=>{
+          html += `<tr>
+            <td>${item.学号}</td>
+            <td>${item.姓名}</td>
+            <td>${item.性别==='M'?'男':'女'}</td>
+            <td>${item.手机号}</td>
+            <td>${item.邮箱||''}</td>
+            <td>${item.班级ID||''}</td>
+            <td>${item.状态==1?'在校':'离校'}</td>
+            <td><button class="btn btn-sm btn-primary" onclick="showEditModal('student', '${item.学号}')">更改</button></td>
+          </tr>`;
+        });
+        html += '</tbody></table>';
+        tbody.innerHTML = html;
+      } else {
+        tbody.innerHTML = '<p class="text-muted">暂无学生记录</p>';
+      }
+    });
+  }
+  
+  window.showEditModal = function(type, id){
+    currentType = type;
+    currentId = id;
+    const title = id ? '更改学生信息' : '添加学生';
+    document.getElementById('editModalTitle').textContent = title;
+    document.getElementById('deleteBtn').style.display = id ? 'inline-block' : 'none';
+    
+    if(id){
+      // 获取详细信息
+      getJson(`/admin_portal/students/detail?学号=${id}`).then(data=>{
+        if(data.item){
+          showEditForm(data.item, type);
+          editModal.show();
+        }
+      });
+    } else {
+      // 添加模式
+      showEditForm({}, type);
+      editModal.show();
+    }
+  };
+  
+  window.deleteItem = function(){
+    if(confirm('确定要删除这条记录吗？')){
+      postJson(`/admin_portal/${currentType}s/delete`, {学号: currentId}).then(data=>{
+        if(data.ok){
+          showAlert('删除成功');
+          editModal.hide();
+          loadStudents();
+        } else {
+          showAlert(data.error || '删除失败', 'danger');
+        }
+      });
+    }
+  };
+  
+  window.saveItem = function(){
+    const formData = {};
+    const inputs = document.querySelectorAll('#editModalContent input, #editModalContent select');
+    inputs.forEach(input=>{
+      if(input.name){
+        formData[input.name] = input.value;
+      }
+    });
+    
+    postJson(`/admin_portal/${currentType}s/save`, formData).then(data=>{
+      if(data.ok){
+        showAlert('保存成功');
+        editModal.hide();
+        loadStudents();
+      } else {
+        showAlert(data.error || '保存失败', 'danger');
+      }
+    });
+  };
+  
+  function showEditForm(item, type){
+    const isEdit = !!currentId;
+    let html = `
+      <form id="editForm">
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label">学号 ${isEdit?'<span class="text-muted">(不可修改)</span>':''}</label>
+            <input type="text" class="form-control" name="学号" value="${item.学号||''}" ${isEdit?'readonly':''} required>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">姓名</label>
+            <input type="text" class="form-control" name="姓名" value="${item.姓名||''}" required>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">性别</label>
+            <select class="form-select" name="性别" required>
+              <option value="M" ${item.性别==='M'?'selected':''}>男</option>
+              <option value="F" ${item.性别==='F'?'selected':''}>女</option>
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">出生日期</label>
+            <input type="date" class="form-control" name="出生日期" value="${item.出生日期||''}" required>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">手机号</label>
+            <input type="text" class="form-control" name="手机号" value="${item.手机号||''}" required>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">邮箱</label>
+            <input type="email" class="form-control" name="邮箱" value="${item.邮箱||''}">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">班级ID</label>
+            <input type="text" class="form-control" name="班级ID" value="${item.班级ID||''}">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">入学日期</label>
+            <input type="date" class="form-control" name="入学日期" value="${item.入学日期||''}" required>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">密码</label>
+            <input type="password" class="form-control" name="密码" value="${item.密码||'123456'}" required>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">状态</label>
+            <select class="form-select" name="状态" required>
+              <option value="1" ${item.状态==1?'selected':''}>在校</option>
+              <option value="0" ${item.状态==0?'selected':''}>离校</option>
+            </select>
+          </div>
+        </div>
+      </form>
+    `;
+    document.getElementById('editModalContent').innerHTML = html;
+  }
+  
+  loadStudents();
+})();
+</script>
+{% endblock %}

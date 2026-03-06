@@ -1,0 +1,171 @@
+{% extends "base_staff.html" %}
+{% block title %}用户订单 - 工作人员{% endblock %}
+{% block content %}
+<div class="card shadow-sm p-3 mb-3">
+  <div class="d-flex justify-content-between align-items-center">
+    <h3 class="mb-0">用户订单</h3>
+    <a class="btn btn-outline-secondary btn-sm" href="/staff/ui">返回控制台</a>
+  </div>
+  <div class="row g-2 mt-2">
+    <div class="col-12 col-md-6">
+      <input id="q" class="form-control" placeholder="按 订单号 或 用户ID 精确查询">
+    </div>
+    <div class="col-12 col-md-6 text-end">
+      <button class="btn btn-primary" onclick="loadOrders()">查询</button>
+    </div>
+  </div>
+</div>
+
+<div class="card shadow-sm p-0">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead>
+        <tr>
+          <th>订单号</th><th>用户ID</th><th>时间</th><th>金额</th><th>支付</th><th>状态</th><th>航班</th><th>舱位</th><th>操作</th>
+        </tr>
+      </thead>
+      <tbody id="tb"></tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block body_script %}
+<script>
+function loadOrders(){
+  const kw = document.getElementById('q').value.trim();
+  const url = kw? `/staff/orders/list?q=${encodeURIComponent(kw)}` : '/staff/orders/list';
+  getJson(url).then(res=>{
+    const tb = document.getElementById('tb');
+    tb.innerHTML = '';
+    (res.items||[]).forEach(o=>{
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${o.订单号}</td><td>${o.用户ID}</td><td>${o.订单时间||''}</td>
+        <td>¥${o.订单总金额||''}</td><td>${o.支付状态}</td><td>${o.订单状态}</td>
+        <td>${o.航班号||''}</td><td>${o.座位类型||''}</td>
+        <td>
+          <div class="btn-group btn-group-sm">
+            <button class="btn btn-outline-primary" onclick="assistChange('${o.订单号}')">改签</button>
+            <button class="btn btn-outline-danger" onclick="makeRefund('${o.订单号}')">退票</button>
+          </div>
+        </td>`;
+      tb.appendChild(tr);
+    })
+  })
+}
+
+function assistChange(orderNo){
+  // 先获取可用航班列表
+  getJson('/staff/flights/available').then(flightsRes=>{
+    if(!flightsRes.items || flightsRes.items.length === 0){
+      alert('没有可用航班');
+      return;
+    }
+    
+    // 构建航班选择对话框
+    let flightOptions = '<option value="">请选择新航班</option>';
+    flightsRes.items.forEach(f=>{
+      const depTime = f.起飞时间 ? new Date(f.起飞时间).toLocaleString('zh-CN') : '';
+      flightOptions += `<option value="${f.航班号}" data-eco="${f.经济舱价格}" data-bus="${f.商务舱价格}" data-first="${f.头等舱价格}">${f.出发城市}→${f.到达城市} ${depTime}</option>`;
+    });
+    
+    // 构建舱位选择
+    const cabinOptions = '<option value="">请选择舱位</option><option value="1">经济舱</option><option value="2">商务舱</option><option value="3">头等舱</option>';
+    
+    // 创建对话框
+    const dialog = document.createElement('div');
+    dialog.className = 'modal fade show';
+    dialog.style.display = 'block';
+    dialog.innerHTML = `
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">改签订单 ${orderNo}</h5>
+            <button type="button" class="btn-close" onclick="this.closest('.modal').remove()"></button>
+          </div>
+          <div class="modal-body">
+            <div class="mb-3">
+              <label class="form-label">选择新航班</label>
+              <select id="newFlight" class="form-select">${flightOptions}</select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">选择舱位</label>
+              <select id="cabinType" class="form-select">${cabinOptions}</select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">改签费用（可选）</label>
+              <input type="number" id="changeFee" class="form-control" value="0" step="0.01">
+            </div>
+            <div class="mb-3">
+              <label class="form-label">改签原因（可选）</label>
+              <input type="text" id="changeReason" class="form-control" value="工作人员协助改签">
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="this.closest('.modal').remove()">取消</button>
+            <button type="button" class="btn btn-primary" onclick="submitChange('${orderNo}')">确认改签</button>
+          </div>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(dialog);
+    
+    // 添加背景遮罩
+    const backdrop = document.createElement('div');
+    backdrop.className = 'modal-backdrop fade show';
+    document.body.appendChild(backdrop);
+    
+    // 关闭对话框时移除遮罩
+    dialog.querySelector('.btn-close').addEventListener('click', ()=>{
+      backdrop.remove();
+    });
+    dialog.querySelector('.btn-secondary').addEventListener('click', ()=>{
+      backdrop.remove();
+    });
+  }).catch(()=>alert('获取航班列表失败'));
+}
+
+function submitChange(orderNo){
+  const newFlight = document.getElementById('newFlight').value;
+  const cabinType = document.getElementById('cabinType').value;
+  const fee = parseFloat(document.getElementById('changeFee').value) || 0;
+  const reason = document.getElementById('changeReason').value || '工作人员协助改签';
+  
+  if(!newFlight || !cabinType){
+    alert('请选择新航班和舱位');
+    return;
+  }
+  
+  postJson('/staff/assist-change', {
+    original_order: orderNo,
+    new_flight_no: newFlight,
+    cabin_type: cabinType,
+    fee: fee,
+    reason: reason
+  }).then(r=>{
+    if(r && r.ok){
+      alert(`改签成功！\n新订单号：${r.new_order_no}\n新座位：${r.new_seat_no}\n新价格：¥${r.new_price}`);
+      // 关闭对话框
+      document.querySelector('.modal').remove();
+      document.querySelector('.modal-backdrop').remove();
+      loadOrders();
+    }else{
+      alert(r && r.error ? r.error : '改签失败');
+    }
+  }).catch(()=>alert('网络错误'));
+}
+
+function makeRefund(orderNo){
+  const passengerId = prompt('输入乘客ID');
+  const staffId = 'EMP0000001';
+  const amount = prompt('退票金额(数字)') || 0;
+  if(!passengerId) return;
+  postJson('/staff/refund', { order_no: orderNo, passenger_id: passengerId, staff_id: staffId, amount: Number(amount), reason:'工作人员退票' })
+    .then(r=>{ alert(r.ok? '退票已提交' : (r.error||'失败')); loadOrders(); })
+}
+
+document.addEventListener('DOMContentLoaded', loadOrders);
+</script>
+{% endblock %}
+
+

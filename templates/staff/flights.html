@@ -1,0 +1,70 @@
+{% extends "base_staff.html" %}
+{% block title %}航班与座位 - 工作人员{% endblock %}
+{% block content %}
+<div class="card shadow-sm p-3 mb-3">
+  <div class="d-flex justify-content-between align-items-center">
+    <h3 class="mb-0">航班与座位</h3>
+    <a class="btn btn-outline-secondary btn-sm" href="/staff/ui">返回控制台</a>
+  </div>
+</div>
+
+<div class="card shadow-sm p-0 mb-3">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead>
+        <tr>
+          <th>航班号</th><th>起飞</th><th>到达</th><th>状态</th>
+        </tr>
+      </thead>
+      <tbody id="tb"></tbody>
+    </table>
+  </div>
+</div>
+
+<div class="card shadow-sm p-3">
+  <h5>更新座位状态</h5>
+  <p class="text-muted small">注意：工作人员只能修改座位状态，不能修改航班状态。航班状态修改请联系系统管理员。</p>
+  <div class="row g-2">
+    <div class="col-12 col-md-3"><input id="fno" class="form-control" placeholder="航班号"></div>
+    <div class="col-6 col-md-3"><input id="sno" class="form-control" placeholder="座位号"></div>
+    <div class="col-6 col-md-3">
+      <select id="sst" class="form-select">
+        <option value="0">空闲(0)</option>
+        <option value="1">占用(1)</option>
+        <option value="2">锁定(2)</option>
+      </select>
+    </div>
+    <div class="col-12 col-md-3 text-end"><button class="btn btn-primary" onclick="updateSeat()">更新座位</button></div>
+  </div>
+</div>
+{% endblock %}
+
+{% block body_script %}
+<script>
+function loadFlights(){
+  getJson('/staff/flights/list').then(res=>{
+    const tb = document.getElementById('tb');
+    tb.innerHTML = '';
+    (res.items||[]).forEach(f=>{
+      const tr = document.createElement('tr');
+      const statusText = f.航班状态 === 0 ? '待起飞' : f.航班状态 === 1 ? '已起飞' : f.航班状态 === 2 ? '延误' : f.航班状态 === 3 ? '已取消' : f.航班状态 === 4 ? '已到达' : '未知';
+      tr.innerHTML = `<td>${f.航班号}</td><td>${f.起飞时间 || ''}</td><td>${f.到达时间 || ''}</td>
+        <td>${statusText}</td>`;
+      tb.appendChild(tr);
+    })
+  })
+}
+function updateSeat(){
+  const fno = document.getElementById('fno').value.trim();
+  const sno = document.getElementById('sno').value.trim();
+  const st = Number(document.getElementById('sst').value);
+  if(!fno || !sno){ alert('请输入航班号与座位号'); return; }
+  postJson('/staff/seats/update', {flight_no:fno, seat_no:sno, status:st}).then(r=>{
+    alert(r.error? r.error : '已更新');
+  })
+}
+document.addEventListener('DOMContentLoaded', loadFlights);
+</script>
+{% endblock %}
+
+

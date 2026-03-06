@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}文章列表 - Django模板示例{% endblock %}
+{% block content %}
+<div class="card shadow-sm">
+  <div class="card-header">
+    <h4>Django模板示例 - 文章列表</h4>
+  </div>
+  <div class="card-body">
+    <p class="text-muted">这是Django模板系统的示例，展示了如何将数据传递给模板并渲染。</p>
+    <table class="table table-striped">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>标题</th>
+          <th>日期</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for article in articles %}
+        <tr>
+          <td>{{ article.id }}</td>
+          <td>{{ article.title }}</td>
+          <td>{{ article.date }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="3" class="text-center text-muted">暂无文章</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <div class="mt-3">
+      <a href="/articles/2020/05/python/" class="btn btn-primary">查看路由示例</a>
+      <a href="/articles/current" class="btn btn-secondary">查看当前文章（JSON）</a>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+

@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}成绩查询 - 学生管理系统{% endblock %}
+{% block nav_items %}
+<li class="nav-item"><a class="nav-link" href="/ui/profile">我的资料</a></li>
+<li class="nav-item"><a class="nav-link" href="/ui/courses">选课管理</a></li>
+<li class="nav-item"><a class="nav-link active" href="/ui/grades">成绩查询</a></li>
+<li class="nav-item"><a class="nav-link" href="/ui/attendance">考勤查询</a></li>
+{% endblock %}
+{% block content %}
+<div class="card shadow-sm">
+  <div class="card-header">
+    <h4>我的成绩</h4>
+  </div>
+  <div class="card-body">
+    <div id="gradesTable">
+      <div class="text-center">
+        <div class="spinner-border" role="status">
+          <span class="visually-hidden">加载中...</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block body_script %}
+<script>
+(function(){
+  getJson('/api/my-grades').then(data=>{
+    const tbody = document.getElementById('gradesTable');
+    if(data.items && data.items.length > 0){
+      let html = '<table class="table table-striped"><thead><tr><th>课程名称</th><th>课程代码</th><th>学分</th><th>平时成绩</th><th>期末成绩</th><th>总成绩</th><th>录入时间</th></tr></thead><tbody>';
+      data.items.forEach(item=>{
+        html += `<tr>
+          <td>${item.课程名称}</td>
+          <td>${item.课程代码||''}</td>
+          <td>${item.学分}</td>
+          <td>${item.平时成绩||'-'}</td>
+          <td>${item.期末成绩||'-'}</td>
+          <td><strong>${item.总成绩||'-'}</strong></td>
+          <td>${item.录入时间||''}</td>
+        </tr>`;
+      });
+      html += '</tbody></table>';
+      tbody.innerHTML = html;
+    } else {
+      tbody.innerHTML = '<p class="text-muted">暂无成绩记录</p>';
+    }
+  }).catch(error=>{
+    console.error('加载成绩失败:', error);
+    document.getElementById('gradesTable').innerHTML = '<p class="text-danger">加载失败，请刷新页面重试</p>';
+  });
+})();
+</script>
+{% endblock %}
+
+

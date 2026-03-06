@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}我的资料 - 学生管理系统{% endblock %}
+{% block nav_items %}
+<li class="nav-item"><a class="nav-link" href="/ui/profile">我的资料</a></li>
+<li class="nav-item"><a class="nav-link" href="/ui/courses">选课管理</a></li>
+<li class="nav-item"><a class="nav-link" href="/ui/grades">成绩查询</a></li>
+<li class="nav-item"><a class="nav-link" href="/ui/attendance">考勤查询</a></li>
+{% endblock %}
+{% block content %}
+<div class="card shadow-sm">
+  <div class="card-header">
+    <h4>我的资料</h4>
+  </div>
+  <div class="card-body">
+    {% if student %}
+    <div class="row mb-3">
+      <div class="col-md-6">
+        <strong>学号：</strong>{{ student.学号 }}
+      </div>
+      <div class="col-md-6">
+        <strong>姓名：</strong>{{ student.姓名 }}
+      </div>
+    </div>
+    <div class="row mb-3">
+      <div class="col-md-6">
+        <strong>性别：</strong>{% if student.性别 == 'M' %}男{% else %}女{% endif %}
+      </div>
+      <div class="col-md-6">
+        <strong>出生日期：</strong>{{ student.出生日期 }}
+      </div>
+    </div>
+    <div class="row mb-3">
+      <div class="col-md-6">
+        <strong>手机号：</strong>{{ student.手机号 }}
+      </div>
+      <div class="col-md-6">
+        <strong>邮箱：</strong>{{ student.邮箱|default:"未设置" }}
+      </div>
+    </div>
+    {% if student.班级名称 %}
+    <div class="row mb-3">
+      <div class="col-md-6">
+        <strong>班级：</strong>{{ student.班级名称 }}
+      </div>
+      <div class="col-md-6">
+        <strong>专业：</strong>{{ student.专业|default:"未设置" }}
+      </div>
+    </div>
+    {% endif %}
+    <div class="row mb-3">
+      <div class="col-md-6">
+        <strong>入学日期：</strong>{{ student.入学日期 }}
+      </div>
+    </div>
+    {% else %}
+    <p class="text-muted">未找到学生信息</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+

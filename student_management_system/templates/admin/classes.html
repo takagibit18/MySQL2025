@@ -1,0 +1,161 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}班级管理{% endblock %}
+{% block content %}
+<div class="card shadow-sm">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <h4>班级管理</h4>
+    <button class="btn btn-primary btn-sm" onclick="showEditModal('class', null)">添加班级</button>
+  </div>
+  <div class="card-body">
+    <div id="classesTable">
+      <div class="text-center">
+        <div class="spinner-border" role="status">
+          <span class="visually-hidden">加载中...</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 更改模态框 -->
+<div class="modal fade" id="editModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="editModalTitle">更改班级信息</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div id="editModalContent"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+        <button type="button" class="btn btn-danger" id="deleteBtn" onclick="deleteItem()" style="display:none;">删除</button>
+        <button type="button" class="btn btn-primary" onclick="saveItem()">保存</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block body_script %}
+<script>
+let currentType = 'class';
+let currentId = '';
+let editModal = null;
+
+(function(){
+  editModal = new bootstrap.Modal(document.getElementById('editModal'));
+  
+  function loadClasses(){
+    getJson('/admin_portal/classes/list').then(data=>{
+      const tbody = document.getElementById('classesTable');
+      if(data.items && data.items.length > 0){
+        let html = '<table class="table table-striped"><thead><tr><th>班级ID</th><th>班级名称</th><th>专业</th><th>年级</th><th>班主任</th><th>创建时间</th><th>操作</th></tr></thead><tbody>';
+        data.items.forEach(item=>{
+          html += `<tr>
+            <td>${item.班级ID}</td>
+            <td>${item.班级名称}</td>
+            <td>${item.专业||''}</td>
+            <td>${item.年级||''}</td>
+            <td>${item.班主任工号||''}</td>
+            <td>${item.创建时间||''}</td>
+            <td><button class="btn btn-sm btn-primary" onclick="showEditModal('class', '${item.班级ID}')">更改</button></td>
+          </tr>`;
+        });
+        html += '</tbody></table>';
+        tbody.innerHTML = html;
+      } else {
+        tbody.innerHTML = '<p class="text-muted">暂无班级记录</p>';
+      }
+    });
+  }
+  
+  window.showEditModal = function(type, id){
+    currentType = type;
+    currentId = id;
+    const title = id ? '更改班级信息' : '添加班级';
+    document.getElementById('editModalTitle').textContent = title;
+    document.getElementById('deleteBtn').style.display = id ? 'inline-block' : 'none';
+    
+    if(id){
+      getJson(`/admin_portal/classes/detail?班级ID=${id}`).then(data=>{
+        if(data.item){
+          showEditForm(data.item);
+          editModal.show();
+        }
+      });
+    } else {
+      showEditForm({});
+      editModal.show();
+    }
+  };
+  
+  window.deleteItem = function(){
+    if(confirm('确定要删除这条记录吗？')){
+      postJson(`/admin_portal/classes/delete`, {班级ID: currentId}).then(data=>{
+        if(data.ok){
+          showAlert('删除成功');
+          editModal.hide();
+          loadClasses();
+        } else {
+          showAlert(data.error || '删除失败', 'danger');
+        }
+      });
+    }
+  };
+  
+  window.saveItem = function(){
+    const formData = {};
+    const inputs = document.querySelectorAll('#editModalContent input, #editModalContent select');
+    inputs.forEach(input=>{
+      if(input.name){
+        formData[input.name] = input.value;
+      }
+    });
+    
+    postJson(`/admin_portal/classes/save`, formData).then(data=>{
+      if(data.ok){
+        showAlert('保存成功');
+        editModal.hide();
+        loadClasses();
+      } else {
+        showAlert(data.error || '保存失败', 'danger');
+      }
+    });
+  };
+  
+  function showEditForm(item){
+    const isEdit = !!currentId;
+    let html = `
+      <form id="editForm">
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label">班级ID ${isEdit?'<span class="text-muted">(不可修改)</span>':''}</label>
+            <input type="text" class="form-control" name="班级ID" value="${item.班级ID||''}" ${isEdit?'readonly':''} required>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">班级名称</label>
+            <input type="text" class="form-control" name="班级名称" value="${item.班级名称||''}" required>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">专业</label>
+            <input type="text" class="form-control" name="专业" value="${item.专业||''}">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">年级</label>
+            <input type="text" class="form-control" name="年级" value="${item.年级||''}">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">班主任工号</label>
+            <input type="text" class="form-control" name="班主任工号" value="${item.班主任工号||''}">
+          </div>
+        </div>
+      </form>
+    `;
+    document.getElementById('editModalContent').innerHTML = html;
+  }
+  
+  loadClasses();
+})();
+</script>
+{% endblock %}
