@@ -1,0 +1,280 @@
+{% extends "base_admin.html" %}
+{% block title %}航班管理 - 系统管理员{% endblock %}
+{% block content %}
+<div class="card shadow-sm p-3 mb-3">
+  <div class="d-flex justify-content-between align-items-center">
+    <h3 class="mb-0">航班管理</h3>
+    <div>
+      <button class="btn btn-primary btn-sm" onclick="showCreateModal()">添加航班</button>
+      <a class="btn btn-outline-secondary btn-sm" href="/sysadmin/ui">返回控制台</a>
+    </div>
+  </div>
+</div>
+
+<div class="card shadow-sm p-0 mb-3">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead>
+        <tr>
+          <th>航班号</th><th>航线</th><th>飞机号</th><th>起飞时间</th><th>到达时间</th>
+          <th>经济舱</th><th>商务舱</th><th>头等舱</th><th>状态</th><th>操作</th>
+        </tr>
+      </thead>
+      <tbody id="tb"></tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block body_script %}
+<script>
+let routesList = [];
+
+function loadRoutes(){
+  getJson('/sysadmin/routes/list').then(r=>{
+    routesList = r.items || [];
+  }).catch(()=>console.error('加载航线列表失败'));
+}
+
+function loadFlights(){
+  getJson('/sysadmin/flights/list').then(res=>{
+    const tb = document.getElementById('tb');
+    tb.innerHTML = '';
+    (res.items||[]).forEach(f=>{
+      const tr = document.createElement('tr');
+      const routeText = f.出发城市 && f.到达城市 ? `${f.出发城市}→${f.到达城市}` : `航线ID:${f.航线ID}`;
+      const statusText = f.航班状态 === 0 ? '待起飞' : f.航班状态 === 1 ? '已起飞' : f.航班状态 === 2 ? '延误' : f.航班状态 === 3 ? '已取消' : f.航班状态 === 4 ? '已到达' : '未知';
+      const statusClass = f.航班状态 === 0 ? 'text-primary' : f.航班状态 === 1 ? 'text-success' : f.航班状态 === 2 ? 'text-warning' : f.航班状态 === 3 ? 'text-danger' : 'text-secondary';
+      tr.innerHTML = `<td>${f.航班号}</td>
+        <td>${routeText}</td>
+        <td>${f.飞机号 || ''}</td>
+        <td>${f.起飞时间 || ''}</td>
+        <td>${f.到达时间 || ''}</td>
+        <td>¥${parseFloat(f.经济舱价格 || 0).toFixed(2)}</td>
+        <td>¥${parseFloat(f.商务舱价格 || 0).toFixed(2)}</td>
+        <td>¥${parseFloat(f.头等舱价格 || 0).toFixed(2)}</td>
+        <td class="${statusClass}">${statusText}</td>
+        <td>
+          <div class="btn-group btn-group-sm">
+            <button class="btn btn-outline-primary" onclick="showEditModal('${f.航班号}')">编辑</button>
+            <button class="btn btn-outline-success" onclick="createSeats('${f.航班号}')">生成座位</button>
+            <button class="btn btn-outline-danger" onclick="deleteFlight('${f.航班号}')">删除</button>
+          </div>
+        </td>`;
+      tb.appendChild(tr);
+    })
+  }).catch(()=>alert('加载航班列表失败'));
+}
+
+function showCreateModal(){
+  const modal = createModal('添加航班', getFlightFormHTML(''));
+  document.body.appendChild(modal);
+  loadRoutes();
+  document.getElementById('flightForm').addEventListener('submit', (e)=>{
+    e.preventDefault();
+    submitCreateFlight();
+  });
+}
+
+function showEditModal(flightNo){
+  getJson(`/sysadmin/flights/detail?flight_no=${flightNo}`).then(f=>{
+    const modal = createModal('编辑航班', getFlightFormHTML(flightNo, f));
+    document.body.appendChild(modal);
+    loadRoutes();
+    document.getElementById('flightForm').addEventListener('submit', (e)=>{
+      e.preventDefault();
+      submitUpdateFlight(flightNo);
+    });
+  }).catch(()=>alert('获取航班详情失败'));
+}
+
+function getFlightFormHTML(flightNo, flightData){
+  const isEdit = !!flightNo;
+  const data = flightData || {};
+  const routeOptions = routesList.map(r=>`<option value="${r.航线ID}" ${data.航线ID == r.航线ID ? 'selected' : ''}>${r.出发城市}→${r.到达城市}</option>`).join('');
+  
+  return `
+    <form id="flightForm">
+      ${isEdit ? '<input type="hidden" id="flight_no" value="' + flightNo + '">' : ''}
+      <div class="mb-3">
+        <label class="form-label">航班号${isEdit ? '（不可修改）' : ''}</label>
+        <input type="text" id="flight_no_input" class="form-control" value="${data.航班号 || ''}" ${isEdit ? 'readonly' : 'required'}>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">航线</label>
+        <select id="route_id" class="form-select" required>
+          <option value="">请选择航线</option>
+          ${routeOptions}
+        </select>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">飞机号</label>
+        <input type="text" id="plane_no" class="form-control" value="${data.飞机号 || ''}" required>
+      </div>
+      <div class="row">
+        <div class="col-md-6 mb-3">
+          <label class="form-label">起飞时间</label>
+          <input type="datetime-local" id="depart_time" class="form-control" value="${formatDateTimeForInput(data.起飞时间)}" required>
+        </div>
+        <div class="col-md-6 mb-3">
+          <label class="form-label">到达时间</label>
+          <input type="datetime-local" id="arrive_time" class="form-control" value="${formatDateTimeForInput(data.到达时间)}" required>
+        </div>
+      </div>
+      <div class="row">
+        <div class="col-md-4 mb-3">
+          <label class="form-label">经济舱价格</label>
+          <input type="number" id="eco_price" class="form-control" step="0.01" value="${data.经济舱价格 || ''}" required>
+        </div>
+        <div class="col-md-4 mb-3">
+          <label class="form-label">商务舱价格</label>
+          <input type="number" id="bus_price" class="form-control" step="0.01" value="${data.商务舱价格 || ''}" required>
+        </div>
+        <div class="col-md-4 mb-3">
+          <label class="form-label">头等舱价格</label>
+          <input type="number" id="first_price" class="form-control" step="0.01" value="${data.头等舱价格 || ''}" required>
+        </div>
+      </div>
+      ${isEdit ? `
+      <div class="mb-3">
+        <label class="form-label">航班状态</label>
+        <select id="status" class="form-select">
+          <option value="0" ${data.航班状态 == 0 ? 'selected' : ''}>待起飞</option>
+          <option value="1" ${data.航班状态 == 1 ? 'selected' : ''}>已起飞</option>
+          <option value="2" ${data.航班状态 == 2 ? 'selected' : ''}>延误</option>
+          <option value="3" ${data.航班状态 == 3 ? 'selected' : ''}>已取消</option>
+          <option value="4" ${data.航班状态 == 4 ? 'selected' : ''}>已到达</option>
+        </select>
+      </div>
+      ` : ''}
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeModal()">取消</button>
+        <button type="submit" class="btn btn-primary">${isEdit ? '保存' : '创建'}</button>
+      </div>
+    </form>
+  `;
+}
+
+function formatDateTimeForInput(dt){
+  if(!dt) return '';
+  const d = new Date(dt);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  const hours = String(d.getHours()).padStart(2, '0');
+  const minutes = String(d.getMinutes()).padStart(2, '0');
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+}
+
+function createModal(title, content){
+  const backdrop = document.createElement('div');
+  backdrop.className = 'modal-backdrop fade show';
+  document.body.appendChild(backdrop);
+  
+  const modal = document.createElement('div');
+  modal.className = 'modal fade show';
+  modal.style.display = 'block';
+  modal.innerHTML = `
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">${title}</h5>
+          <button type="button" class="btn-close" onclick="closeModal()"></button>
+        </div>
+        <div class="modal-body">
+          ${content}
+        </div>
+      </div>
+    </div>
+  `;
+  
+  window.closeModal = function(){
+    modal.remove();
+    backdrop.remove();
+    delete window.closeModal;
+  };
+  
+  return modal;
+}
+
+function submitCreateFlight(){
+  const data = {
+    flight_no: document.getElementById('flight_no_input').value.trim(),
+    route_id: document.getElementById('route_id').value,
+    plane_no: document.getElementById('plane_no').value.trim(),
+    depart_time: document.getElementById('depart_time').value,
+    arrive_time: document.getElementById('arrive_time').value,
+    eco_price: parseFloat(document.getElementById('eco_price').value),
+    bus_price: parseFloat(document.getElementById('bus_price').value),
+    first_price: parseFloat(document.getElementById('first_price').value)
+  };
+  
+  if(!data.flight_no || !data.route_id || !data.plane_no || !data.depart_time || !data.arrive_time){
+    alert('请填写完整信息');
+    return;
+  }
+  
+  postJson('/sysadmin/flights', data).then(r=>{
+    if(r && r.ok){
+      alert('创建成功');
+      closeModal();
+      loadFlights();
+    }else{
+      alert(r && r.error || '创建失败');
+    }
+  }).catch(()=>alert('网络错误'));
+}
+
+function submitUpdateFlight(flightNo){
+  const data = {
+    route_id: document.getElementById('route_id').value,
+    plane_no: document.getElementById('plane_no').value.trim(),
+    depart_time: document.getElementById('depart_time').value,
+    arrive_time: document.getElementById('arrive_time').value,
+    eco_price: parseFloat(document.getElementById('eco_price').value),
+    bus_price: parseFloat(document.getElementById('bus_price').value),
+    first_price: parseFloat(document.getElementById('first_price').value),
+    status: parseInt(document.getElementById('status').value)
+  };
+  
+  postJson('/sysadmin/flights/update', {flight_no: flightNo, ...data}).then(r=>{
+    if(r && r.ok){
+      alert('更新成功');
+      closeModal();
+      loadFlights();
+    }else{
+      alert(r && r.error || '更新失败');
+    }
+  }).catch(()=>alert('网络错误'));
+}
+
+function createSeats(flightNo){
+  if(!confirm(`确定要为航班 ${flightNo} 生成座位吗？`)) return;
+  postJson('/sysadmin/flights/create-seats', {flight_no: flightNo}).then(r=>{
+    if(r && r.ok){
+      alert('座位生成成功');
+    }else{
+      alert(r && r.error || '生成失败');
+    }
+  }).catch(()=>alert('网络错误'));
+}
+
+function deleteFlight(flightNo){
+  if(!confirm(`确定要删除航班 ${flightNo} 吗？此操作不可恢复！`)) return;
+  postJson('/sysadmin/flights/delete', {flight_no: flightNo}).then(r=>{
+    if(r && r.ok){
+      alert('删除成功');
+      loadFlights();
+    }else{
+      alert(r && r.error || '删除失败');
+    }
+  }).catch(()=>alert('网络错误'));
+}
+
+document.addEventListener('DOMContentLoaded', ()=>{
+  loadRoutes();
+  loadFlights();
+});
+</script>
+{% endblock %}
+

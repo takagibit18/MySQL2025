@@ -1,0 +1,40 @@
+{% extends "teacher/base_teacher.html" %}
+{% block title %}教师首页{% endblock %}
+{% block content %}
+<div class="card shadow-sm">
+  <div class="card-header">
+    <h4>教师后台首页</h4>
+  </div>
+  <div class="card-body">
+    <p>欢迎使用学生管理系统教师后台！</p>
+    <div class="row">
+      <div class="col-md-4">
+        <div class="card text-center">
+          <div class="card-body">
+            <h5 class="card-title">我的课程</h5>
+            <a href="/teacher/ui/courses" class="btn btn-success">进入</a>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="card text-center">
+          <div class="card-body">
+            <h5 class="card-title">成绩管理</h5>
+            <a href="/teacher/ui/grades" class="btn btn-success">进入</a>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="card text-center">
+          <div class="card-body">
+            <h5 class="card-title">考勤管理</h5>
+            <a href="/teacher/ui/attendance" class="btn btn-success">进入</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+

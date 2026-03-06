@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% block title %}乘客管理 - 机票系统{% endblock %}
+{% block content %}
+<div class="card shadow-sm p-4 mb-3">
+  <h3 class="mb-3">新增乘客</h3>
+  <form id="psgForm" class="row g-3">
+    <div class="col-12 col-md-4">
+      <label class="form-label">乘客ID（身份证号）</label>
+      <input class="form-control" name="passenger_id" required>
+    </div>
+    <div class="col-12 col-md-3">
+      <label class="form-label">姓名</label>
+      <input class="form-control" name="name" required>
+    </div>
+    <div class="col-12 col-md-2">
+      <label class="form-label">性别</label>
+      <select class="form-select" name="gender" required>
+        <option value="男">男</option>
+        <option value="女">女</option>
+      </select>
+    </div>
+    <div class="col-12 col-md-3">
+      <label class="form-label">出生日期</label>
+      <input class="form-control" type="date" name="birthday" required>
+    </div>
+    <div class="col-12 col-md-4">
+      <label class="form-label">联系电话</label>
+      <input class="form-control" name="phone" required>
+    </div>
+    <div class="col-12">
+      <button class="btn btn-primary" type="button" onclick="addPassenger()">添加乘客</button>
+    </div>
+  </form>
+</div>
+
+<div class="card shadow-sm p-0">
+  <div class="table-responsive">
+    <table class="table table-hover mb-0">
+      <thead>
+        <tr>
+          <th>乘客ID</th>
+          <th>姓名</th>
+          <th>性别</th>
+          <th>出生日期</th>
+          <th>证件类型</th>
+          <th>联系电话</th>
+          <th class="text-end">操作</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for p in passengers %}
+        <tr>
+          <td>{{ p.乘客ID }}</td>
+          <td><input class="form-control form-control-sm" value="{{ p.姓名 }}" id="name_{{ p.乘客ID }}"></td>
+          <td>
+            <select class="form-select form-select-sm" id="gender_{{ p.乘客ID }}">
+              <option value="男" {% if p.性别 == '男' %}selected{% endif %}>男</option>
+              <option value="女" {% if p.性别 == '女' %}selected{% endif %}>女</option>
+            </select>
+          </td>
+          <td><input class="form-control form-control-sm" type="date" value="{{ p.出生日期 }}" id="birthday_{{ p.乘客ID }}"></td>
+          <td>{{ p.证件类型 }}</td>
+          <td><input class="form-control form-control-sm" value="{{ p.联系电话 }}" id="phone_{{ p.乘客ID }}"></td>
+          <td class="text-end">
+            <div class="btn-group btn-group-sm">
+              <button class="btn btn-outline-primary" onclick="savePassenger('{{ p.乘客ID }}')">保存</button>
+              <button class="btn btn-outline-danger" onclick="delPassenger('{{ p.乘客ID }}')">删除</button>
+            </div>
+          </td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="7" class="text-center text-muted py-4">暂无乘客</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  </div>
+{% endblock %}
+
+{% block body_script %}
+<script>
+function addPassenger(){
+  const f = document.getElementById('psgForm');
+  const data = Object.fromEntries(new FormData(f).entries());
+  postJson('/api/passengers/create', data).then(r=>{
+    if(r && r.ok){ location.reload(); } else { alert(r.error||'添加失败'); }
+  });
+}
+function delPassenger(id){
+  if(!confirm('确认删除该乘客？')) return;
+  postJson('/api/passengers/delete', { passenger_id: id }).then(r=>{
+    if(r && r.ok){ location.reload(); } else { alert(r.error||'删除失败'); }
+  });
+}
+function savePassenger(id){
+  const payload = {
+    passenger_id: id,
+    name: document.getElementById(`name_${id}`).value,
+    gender: document.getElementById(`gender_${id}`).value,
+    birthday: document.getElementById(`birthday_${id}`).value,
+    phone: document.getElementById(`phone_${id}`).value,
+  };
+  postJson('/api/passengers/update', payload).then(r=>{
+    if(r && r.ok){ alert('已保存'); } else { alert(r.error||'保存失败'); }
+  });
+}
+</script>
+{% endblock %}
+
+

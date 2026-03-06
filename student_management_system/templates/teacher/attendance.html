@@ -1,0 +1,356 @@
+{% extends "teacher/base_teacher.html" %}
+{% block title %}考勤管理{% endblock %}
+{% block content %}
+<div class="card shadow-sm">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <h4>考勤管理 - 点名</h4>
+    <div>
+      <button class="btn btn-sm btn-success" onclick="markAllPresent()">一键全到</button>
+      <button class="btn btn-sm btn-primary" onclick="saveAll()">批量保存</button>
+    </div>
+  </div>
+  <div class="card-body">
+    <div class="row mb-3">
+      <div class="col-md-4">
+        <label class="form-label">选择课程</label>
+        <select class="form-select" id="courseSelect">
+          <option value="">请选择课程</option>
+        </select>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label">考勤日期</label>
+        <input type="date" class="form-control" id="attendanceDate" value="">
+      </div>
+      <div class="col-md-4 d-flex align-items-end">
+        <button class="btn btn-primary w-100" onclick="loadAttendanceList()">加载学生列表</button>
+      </div>
+    </div>
+    
+    <div id="attendanceTable">
+      <p class="text-muted">请先选择课程和日期，然后点击"加载学生列表"</p>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block head %}
+<style>
+.avatar {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  object-fit: cover;
+  cursor: pointer;
+  border: 3px solid #ddd;
+  transition: all 0.3s;
+}
+.avatar:hover {
+  transform: scale(1.1);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+.status-tag {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.status-present { background: #d4edda; color: #155724; }
+.status-late { background: #fff3cd; color: #856404; }
+.status-early { background: #ffeaa7; color: #d63031; }
+.status-absent { background: #f8d7da; color: #721c24; }
+.status-leave { background: #cce5ff; color: #004085; }
+.student-row {
+  transition: background-color 0.2s;
+}
+.student-row:hover {
+  background-color: #f8f9fa;
+}
+</style>
+{% endblock %}
+{% block body_script %}
+<script>
+let currentCourseId = '';
+let currentDate = '';
+let studentsData = [];
+
+(function(){
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('attendanceDate').value = today;
+  
+  // 加载课程列表
+  getJson('/teacher/courses/list').then(data=>{
+    if(data.items){
+      const select = document.getElementById('courseSelect');
+      data.items.forEach(item=>{
+        const option = document.createElement('option');
+        option.value = item.课程ID;
+        option.textContent = `${item.课程名称} (${item.课程代码||''})`;
+        select.appendChild(option);
+      });
+    }
+  });
+  
+  window.loadAttendanceList = function(){
+    currentCourseId = document.getElementById('courseSelect').value;
+    currentDate = document.getElementById('attendanceDate').value;
+    
+    if(!currentCourseId || !currentDate){
+      showAlert('请选择课程和日期', 'warning');
+      return;
+    }
+    
+    getJson(`/teacher/courses/students?course_id=${currentCourseId}`).then(data=>{
+      if(data.items && data.items.length > 0){
+        studentsData = data.items;
+        renderAttendanceTable(data.items);
+      } else {
+        document.getElementById('attendanceTable').innerHTML = '<p class="text-muted">该课程暂无学生</p>';
+      }
+    });
+  };
+  
+  function renderAttendanceTable(students){
+    let html = `
+      <div class="table-responsive">
+        <table class="table table-hover">
+          <thead class="table-light">
+            <tr>
+              <th width="80">头像</th>
+              <th>学号</th>
+              <th>姓名</th>
+              <th>考勤状态</th>
+              <th>备注</th>
+              <th><input type="checkbox" id="selectAll" onchange="toggleSelectAll()"> 全选</th>
+            </tr>
+          </thead>
+          <tbody>
+    `;
+    
+    students.forEach((item, index)=>{
+      // 使用默认头像或根据性别生成
+      const avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(item.姓名)}&size=50&background=9c1e24&color=fff&bold=true`;
+      const status = item.考勤状态 || 1; // 默认出勤
+      const statusMap = {
+        1: {text: '出勤', class: 'status-present'},
+        2: {text: '迟到', class: 'status-late'},
+        3: {text: '早退', class: 'status-early'},
+        4: {text: '缺勤', class: 'status-absent'},
+        5: {text: '请假', class: 'status-leave'}
+      };
+      
+      html += `
+        <tr class="student-row" data-index="${index}">
+          <td>
+            <img src="${avatarUrl}" alt="${item.姓名}" class="avatar" 
+                 onclick="toggleStatus(${index})" 
+                 title="点击头像切换状态">
+          </td>
+          <td>${item.学号}</td>
+          <td>${item.姓名}</td>
+          <td>
+            <span class="status-tag ${statusMap[status].class}" id="status_${index}" onclick="showStatusMenu(${index})" style="cursor:pointer;">
+              ${statusMap[status].text}
+            </span>
+            <input type="hidden" id="status_value_${index}" value="${status}">
+          </td>
+          <td>
+            <input type="text" class="form-control form-control-sm" id="remark_${index}" 
+                   placeholder="备注信息" value="${item.备注||''}">
+          </td>
+          <td>
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" id="select_${index}" onchange="updateSelectAll()">
+            </div>
+          </td>
+        </tr>
+      `;
+    });
+    
+    
+    html += `
+          </tbody>
+        </table>
+      </div>
+    `;
+    
+    document.getElementById('attendanceTable').innerHTML = html;
+  }
+  
+  window.toggleStatus = function(index){
+    const statusInput = document.getElementById(`status_value_${index}`);
+    let currentStatus = parseInt(statusInput.value);
+    currentStatus = currentStatus >= 4 ? 1 : currentStatus + 1;
+    updateStatusDisplay(index, currentStatus);
+  };
+  
+  window.showStatusMenu = function(index){
+    // 创建下拉菜单
+    const statusTag = document.getElementById(`status_${index}`);
+    const rect = statusTag.getBoundingClientRect();
+    
+    // 移除已存在的菜单
+    const existingMenu = document.getElementById('statusMenu');
+    if(existingMenu) existingMenu.remove();
+    
+    const menu = document.createElement('div');
+    menu.id = 'statusMenu';
+    menu.className = 'dropdown-menu show';
+    menu.style.position = 'fixed';
+    menu.style.left = rect.left + 'px';
+    menu.style.top = (rect.bottom + 5) + 'px';
+    menu.style.zIndex = '1050';
+    
+    const statusOptions = [
+      {value: 1, text: '出勤', class: 'status-present'},
+      {value: 2, text: '迟到', class: 'status-late'},
+      {value: 3, text: '早退', class: 'status-early'},
+      {value: 4, text: '缺勤', class: 'status-absent'},
+      {value: 5, text: '请假', class: 'status-leave'}
+    ];
+    
+    const currentStatus = parseInt(document.getElementById(`status_value_${index}`).value);
+    
+    statusOptions.forEach(opt=>{
+      const item = document.createElement('a');
+      item.className = `dropdown-item ${opt.value === currentStatus ? 'active' : ''}`;
+      item.href = '#';
+      item.innerHTML = `<span class="status-tag ${opt.class}">${opt.text}</span>`;
+      item.onclick = function(e){
+        e.preventDefault();
+        setStatus(index, opt.value);
+        menu.remove();
+      };
+      menu.appendChild(item);
+    });
+    
+    document.body.appendChild(menu);
+    
+    // 点击外部关闭菜单
+    setTimeout(()=>{
+      document.addEventListener('click', function closeMenu(e){
+        if(!menu.contains(e.target) && e.target !== statusTag){
+          menu.remove();
+          document.removeEventListener('click', closeMenu);
+        }
+      });
+    }, 100);
+  };
+  
+  window.setStatus = function(index, status){
+    updateStatusDisplay(index, status);
+  };
+  
+  function updateStatusDisplay(index, status){
+    const statusInput = document.getElementById(`status_value_${index}`);
+    const statusTag = document.getElementById(`status_${index}`);
+    
+    statusInput.value = status;
+    
+    const statusMap = {
+      1: {text: '出勤', class: 'status-present'},
+      2: {text: '迟到', class: 'status-late'},
+      3: {text: '早退', class: 'status-early'},
+      4: {text: '缺勤', class: 'status-absent'},
+      5: {text: '请假', class: 'status-leave'}
+    };
+    
+    statusTag.textContent = statusMap[status].text;
+    statusTag.className = `status-tag ${statusMap[status].class}`;
+  }
+  
+  window.markAllPresent = function(){
+    if(!studentsData.length){
+      showAlert('请先加载学生列表', 'warning');
+      return;
+    }
+    studentsData.forEach((_, index)=>{
+      updateStatusDisplay(index, 1);
+    });
+    showAlert('已设置全部为出勤', 'success');
+  };
+  
+  window.toggleSelectAll = function(){
+    const checked = document.getElementById('selectAll').checked;
+    studentsData.forEach((_, index)=>{
+      const checkbox = document.getElementById(`select_${index}`);
+      if(checkbox) checkbox.checked = checked;
+    });
+  };
+  
+  window.updateSelectAll = function(){
+    const checkboxes = studentsData.map((_, index)=>document.getElementById(`select_${index}`));
+    const allChecked = checkboxes.every(cb => cb && cb.checked);
+    const someChecked = checkboxes.some(cb => cb && cb.checked);
+    const selectAll = document.getElementById('selectAll');
+    if(selectAll){
+      selectAll.checked = allChecked;
+      selectAll.indeterminate = someChecked && !allChecked;
+    }
+  };
+  
+  window.saveSingle = function(index){
+    const student = studentsData[index];
+    const status = document.getElementById(`status_value_${index}`).value;
+    const remark = document.getElementById(`remark_${index}`).value;
+    
+    postJson('/teacher/attendance/add', {
+      学号: student.学号,
+      课程ID: currentCourseId,
+      考勤日期: currentDate,
+      考勤状态: parseInt(status),
+      备注: remark || null
+    }).then(data=>{
+      if(data.ok){
+        showAlert('保存成功');
+      } else {
+        showAlert(data.error || '保存失败', 'danger');
+      }
+    });
+  };
+  
+  window.saveAll = function(){
+    if(!studentsData.length){
+      showAlert('请先加载学生列表', 'warning');
+      return;
+    }
+    
+    // 只保存选中的学生
+    const attendances = [];
+    studentsData.forEach((student, index)=>{
+      const checkbox = document.getElementById(`select_${index}`);
+      if(checkbox && checkbox.checked){
+        attendances.push({
+          学号: student.学号,
+          课程ID: currentCourseId,
+          考勤日期: currentDate,
+          考勤状态: parseInt(document.getElementById(`status_value_${index}`).value),
+          备注: document.getElementById(`remark_${index}`).value || null
+        });
+      }
+    });
+    
+    if(attendances.length === 0){
+      showAlert('请至少选择一个学生', 'warning');
+      return;
+    }
+    
+    postJson('/teacher/attendance/batch', {
+      attendances: attendances
+    }).then(data=>{
+      if(data.ok){
+        showAlert(`成功保存${data.count}条考勤记录`);
+        // 取消所有选择
+        document.getElementById('selectAll').checked = false;
+        studentsData.forEach((_, index)=>{
+          const checkbox = document.getElementById(`select_${index}`);
+          if(checkbox) checkbox.checked = false;
+        });
+      } else {
+        showAlert(data.error || '保存失败', 'danger');
+      }
+    });
+  };
+})();
+</script>
+{% endblock %}

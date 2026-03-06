@@ -1,0 +1,48 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}管理员首页{% endblock %}
+{% block content %}
+<div class="card shadow-sm">
+  <div class="card-header">
+    <h4>管理员后台首页</h4>
+  </div>
+  <div class="card-body">
+    <p>欢迎使用学生管理系统管理员后台！</p>
+    <div class="row">
+      <div class="col-md-3">
+        <div class="card text-center">
+          <div class="card-body">
+            <h5 class="card-title">学生管理</h5>
+            <a href="/admin_portal/ui/students" class="btn btn-primary">进入</a>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="card text-center">
+          <div class="card-body">
+            <h5 class="card-title">教师管理</h5>
+            <a href="/admin_portal/ui/teachers" class="btn btn-primary">进入</a>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="card text-center">
+          <div class="card-body">
+            <h5 class="card-title">班级管理</h5>
+            <a href="/admin_portal/ui/classes" class="btn btn-primary">进入</a>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="card text-center">
+          <div class="card-body">
+            <h5 class="card-title">课程管理</h5>
+            <a href="/admin_portal/ui/courses" class="btn btn-primary">进入</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+

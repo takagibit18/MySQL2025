@@ -1,0 +1,262 @@
+{% extends "teacher/base_teacher.html" %}
+{% block title %}请假申请{% endblock %}
+{% block content %}
+<div class="card shadow-sm">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <h4>请假申请查看</h4>
+    <div>
+      <select class="form-select form-select-sm d-inline-block" style="width:auto;" id="courseFilter">
+        <option value="">全部课程</option>
+      </select>
+      <button class="btn btn-sm btn-outline-primary ms-2" id="btnAll">全部</button>
+      <button class="btn btn-sm btn-outline-warning" id="btnPending">待审批</button>
+      <button class="btn btn-sm btn-outline-success" id="btnApproved">已通过</button>
+      <button class="btn btn-sm btn-outline-danger" id="btnRejected">已拒绝</button>
+    </div>
+  </div>
+  <div class="card-body">
+    <div id="leaveRequestsTable">
+      <div class="text-center">
+        <div class="spinner-border" role="status">
+          <span class="visually-hidden">加载中...</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 详情模态框 -->
+<div class="modal fade" id="detailModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">请假申请详情</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="detailModalContent">
+        <!-- 动态内容 -->
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+        <button type="button" class="btn btn-danger" id="btnReject" onclick="updateLeaveStatus(2)" style="display:none;">拒绝</button>
+        <button type="button" class="btn btn-success" id="btnApprove" onclick="updateLeaveStatus(1)" style="display:none;">通过</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block head %}
+<style>
+.status-tag {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+}
+.status-pending { background: #e2e3e5; color: #383d41; }
+.status-approved { background: #d1ecf1; color: #0c5460; }
+.status-rejected { background: #f8d7da; color: #721c24; }
+.medical-image {
+  max-width: 400px;
+  max-height: 400px;
+  border-radius: 8px;
+  cursor: pointer;
+  border: 2px solid #ddd;
+}
+.medical-image:hover {
+  border-color: #9c1e24;
+}
+</style>
+{% endblock %}
+{% block body_script %}
+<script>
+let detailModal = null;
+let currentStatus = '';
+
+(function(){
+  detailModal = new bootstrap.Modal(document.getElementById('detailModal'));
+  
+  // 先定义函数，然后再调用
+  window.loadLeaveRequests = function(status){
+    currentStatus = status || '';
+    const courseId = document.getElementById('courseFilter').value;
+    let url = '/teacher/leave-requests/list';
+    const params = [];
+    if(courseId) params.push(`course_id=${courseId}`);
+    if(status !== undefined && status !== '') params.push(`status=${status}`);
+    if(params.length) url += '?' + params.join('&');
+    
+    // 显示加载状态
+    const tbody = document.getElementById('leaveRequestsTable');
+    tbody.innerHTML = '<div class="text-center"><div class="spinner-border" role="status"><span class="visually-hidden">加载中...</span></div></div>';
+    
+    getJson(url).then(data=>{
+      // 检查是否有错误
+      if(data.error){
+        tbody.innerHTML = `<p class="text-danger">${data.error}</p>`;
+        return;
+      }
+      
+      // 确保items存在
+      const items = data.items || [];
+      if(items.length > 0){
+        let html = '<table class="table table-striped"><thead><tr><th>学号</th><th>姓名</th><th>课程</th><th>请假类型</th><th>日期范围</th><th>状态</th><th>操作</th></tr></thead><tbody>';
+        data.items.forEach(item=>{
+          const statusClass = item.审批状态 === 0 ? 'status-pending' :
+                             item.审批状态 === 1 ? 'status-approved' : 'status-rejected';
+          const statusText = item.审批状态 === 0 ? '待审批' :
+                            item.审批状态 === 1 ? '已通过' : '已拒绝';
+          
+          html += `<tr>
+            <td>${item.学号}</td>
+            <td>${item.学生姓名}</td>
+            <td>${item.课程名称}</td>
+            <td>${item.请假类型}</td>
+            <td>${item.开始日期} 至 ${item.结束日期}</td>
+            <td><span class="status-tag ${statusClass}">${statusText}</span></td>
+            <td><button class="btn btn-sm btn-primary" onclick="showDetail('${item.请假申请ID}')">查看详情</button></td>
+          </tr>`;
+        });
+        html += '</tbody></table>';
+        tbody.innerHTML = html;
+      } else {
+        tbody.innerHTML = '<p class="text-muted">暂无请假申请</p>';
+      }
+    }).catch(error=>{
+      console.error('加载请假申请失败:', error);
+      tbody.innerHTML = `<p class="text-danger">加载失败: ${error.message || '未知错误'}。请检查浏览器控制台获取详细信息。</p>`;
+    });
+  };
+  
+  // 绑定事件处理器
+  document.getElementById('courseFilter').addEventListener('change', function(){
+    loadLeaveRequests(currentStatus || '');
+  });
+  document.getElementById('btnAll').addEventListener('click', function(){
+    loadLeaveRequests('');
+  });
+  document.getElementById('btnPending').addEventListener('click', function(){
+    loadLeaveRequests('0');
+  });
+  document.getElementById('btnApproved').addEventListener('click', function(){
+    loadLeaveRequests('1');
+  });
+  document.getElementById('btnRejected').addEventListener('click', function(){
+    loadLeaveRequests('2');
+  });
+  
+  // 加载课程列表
+  getJson('/teacher/courses/list').then(data=>{
+    if(data.items){
+      const select = document.getElementById('courseFilter');
+      data.items.forEach(item=>{
+        const option = document.createElement('option');
+        option.value = item.课程ID;
+        option.textContent = item.课程名称;
+        select.appendChild(option);
+      });
+    }
+  }).catch(error=>{
+    console.error('加载课程列表失败:', error);
+    // 即使课程列表加载失败，也继续加载请假申请
+  });
+  
+  // 默认加载全部（不筛选状态）
+  loadLeaveRequests('');
+  
+  window.currentLeaveId = null;
+  
+  window.showDetail = function(leaveId){
+    getJson(`/teacher/leave-requests/detail?请假申请ID=${leaveId}`).then(data=>{
+      if(data.item){
+        const item = data.item;
+        const statusText = item.审批状态 === 0 ? '待审批' :
+                          item.审批状态 === 1 ? '已通过' : '已拒绝';
+        const statusClass = item.审批状态 === 0 ? 'status-pending' :
+                           item.审批状态 === 1 ? 'status-approved' : 'status-rejected';
+        
+        let html = `
+          <div class="row g-3">
+            <div class="col-md-6"><strong>学号：</strong>${item.学号}</div>
+            <div class="col-md-6"><strong>姓名：</strong>${item.学生姓名}</div>
+            <div class="col-md-6"><strong>课程：</strong>${item.课程名称}</div>
+            <div class="col-md-6"><strong>请假类型：</strong>${item.请假类型}</div>
+            <div class="col-md-6"><strong>开始日期：</strong>${item.开始日期}</div>
+            <div class="col-md-6"><strong>结束日期：</strong>${item.结束日期}</div>
+            <div class="col-12"><strong>请假理由：</strong><p class="mb-0">${item.请假理由||''}</p></div>
+            ${item.病假条图片 ? `<div class="col-12">
+              <strong>病假条：</strong><br>
+              <img src="${item.病假条图片}" alt="病假条" class="medical-image mt-2" onclick="window.open('${item.病假条图片}', '_blank')" title="点击查看大图">
+            </div>` : '<div class="col-12"><strong>病假条：</strong><span class="text-muted">未上传</span></div>'}
+            <div class="col-12">
+              <strong>审批状态：</strong>
+              <span class="status-tag ${statusClass}">${statusText}</span>
+            </div>
+            ${item.审批意见 ? `<div class="col-12"><strong>审批意见：</strong><p class="mb-0">${item.审批意见}</p></div>` : ''}
+            <div class="col-12"><strong>申请时间：</strong>${item.申请时间||''}</div>
+            ${item.审批时间 ? `<div class="col-12"><strong>审批时间：</strong>${item.审批时间}</div>` : ''}
+            ${item.审批状态 === 0 ? `<div class="col-12">
+              <hr>
+              <label class="form-label"><strong>审批意见</strong></label>
+              <textarea class="form-control" id="approvalComment" rows="3" placeholder="请输入审批意见">${item.审批意见||''}</textarea>
+            </div>` : ''}
+          </div>
+        `;
+        document.getElementById('detailModalContent').innerHTML = html;
+        
+        // 显示/隐藏审批按钮
+        const btnApprove = document.getElementById('btnApprove');
+        const btnReject = document.getElementById('btnReject');
+        if(item.审批状态 === 0){
+          // 待审批状态，显示审批按钮
+          btnApprove.style.display = 'inline-block';
+          btnReject.style.display = 'inline-block';
+          window.currentLeaveId = item.请假申请ID;
+        } else {
+          // 已审批，隐藏审批按钮
+          btnApprove.style.display = 'none';
+          btnReject.style.display = 'none';
+          window.currentLeaveId = null;
+        }
+        
+        detailModal.show();
+      }
+    });
+  };
+  
+  window.updateLeaveStatus = function(status){
+    if(!window.currentLeaveId){
+      showAlert('请先选择请假申请', 'warning');
+      return;
+    }
+    
+    const comment = document.getElementById('approvalComment') ? document.getElementById('approvalComment').value : '';
+    const statusText = status === 1 ? '通过' : '拒绝';
+    
+    if(status === 2 && !comment.trim()){
+      showAlert('拒绝申请必须填写审批意见', 'warning');
+      return;
+    }
+    
+    postJson('/teacher/leave-requests/update-status', {
+      请假申请ID: window.currentLeaveId,
+      审批状态: status,
+      审批意见: comment
+    }).then(data=>{
+      if(data.ok){
+        showAlert(`已${statusText}申请`);
+        detailModal.hide();
+        loadLeaveRequests(currentStatus || '');
+      } else {
+        showAlert(data.error || '操作失败', 'danger');
+      }
+    }).catch(error=>{
+      console.error('更新状态失败:', error);
+      showAlert('操作失败：' + (error.message || '未知错误'), 'danger');
+    });
+  };
+})();
+</script>
+{% endblock %}
+

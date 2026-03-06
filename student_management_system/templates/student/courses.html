@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}选课管理 - 学生管理系统{% endblock %}
+{% block nav_items %}
+<li class="nav-item"><a class="nav-link" href="/ui/profile">我的资料</a></li>
+<li class="nav-item"><a class="nav-link active" href="/ui/courses">选课管理</a></li>
+<li class="nav-item"><a class="nav-link" href="/ui/grades">成绩查询</a></li>
+<li class="nav-item"><a class="nav-link" href="/ui/attendance">考勤查询</a></li>
+{% endblock %}
+{% block content %}
+<div class="card shadow-sm">
+  <div class="card-header">
+    <h4>我的选课</h4>
+  </div>
+  <div class="card-body">
+    <div id="coursesTable">
+      <div class="text-center">
+        <div class="spinner-border" role="status">
+          <span class="visually-hidden">加载中...</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block body_script %}
+<script>
+(function(){
+  getJson('/api/my-courses').then(data=>{
+    const tbody = document.getElementById('coursesTable');
+    if(data.items && data.items.length > 0){
+      let html = '<table class="table table-striped"><thead><tr><th>课程名称</th><th>课程代码</th><th>学分</th><th>上课时间</th><th>上课地点</th><th>授课教师</th><th>选课时间</th><th>操作</th></tr></thead><tbody>';
+      data.items.forEach(item=>{
+        const canDrop = item.可退选 === 1;
+        const daysInfo = item.选课天数 > 7 ? `<span class="text-danger">（已超7天）</span>` : `<span class="text-success">（${item.选课天数}天）</span>`;
+        const dropBtn = canDrop 
+          ? `<button class="btn btn-sm btn-danger" onclick="dropCourse('${item.课程ID}')">退选</button>`
+          : `<button class="btn btn-sm btn-secondary" disabled title="选课超过7天无法退选">不可退选</button>`;
+        html += `<tr>
+          <td>${item.课程名称}</td>
+          <td>${item.课程代码||''}</td>
+          <td>${item.学分}</td>
+          <td>${item.上课时间||''}</td>
+          <td>${item.上课地点||''}</td>
+          <td>${item.教师姓名||''}</td>
+          <td>${item.选课时间||''} ${daysInfo}</td>
+          <td>${dropBtn}</td>
+        </tr>`;
+      });
+      html += '</tbody></table>';
+      tbody.innerHTML = html;
+    } else {
+      tbody.innerHTML = '<p class="text-muted">暂无选课记录</p>';
+    }
+  });
+  function dropCourse(courseId){
+    if(confirm('确定要退选这门课程吗？')){
+      postJson('/api/drop-course', {course_id: courseId}).then(data=>{
+        if(data.ok){
+          showAlert('退选成功');
+          location.reload();
+        } else {
+          showAlert(data.error || '退选失败', 'danger');
+        }
+      });
+    }
+  }
+  window.dropCourse = dropCourse;
+})();
+</script>
+{% endblock %}
+
+

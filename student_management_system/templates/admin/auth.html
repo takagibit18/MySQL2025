@@ -1,0 +1,174 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}认证和授权{% endblock %}
+{% block content %}
+<div class="card shadow-sm">
+  <div class="card-header">
+    <h4>认证和授权管理</h4>
+  </div>
+  <div class="card-body">
+    <ul class="nav nav-tabs mb-3" role="tablist">
+      <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="user-tab" data-bs-toggle="tab" data-bs-target="#user-pane" type="button">个人权限</button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="group-tab" data-bs-toggle="tab" data-bs-target="#group-pane" type="button">权限组</button>
+      </li>
+    </ul>
+    
+    <div class="tab-content">
+      <!-- 个人权限 -->
+      <div class="tab-pane fade show active" id="user-pane" role="tabpanel">
+        <div class="mb-3">
+          <label class="form-label">选择用户</label>
+          <select class="form-select" id="userSelect" onchange="loadUserPermissions()">
+            <option value="">请选择用户</option>
+          </select>
+        </div>
+        <div id="userPermissionsArea">
+          <p class="text-muted">请先选择用户</p>
+        </div>
+      </div>
+      
+      <!-- 权限组 -->
+      <div class="tab-pane fade" id="group-pane" role="tabpanel">
+        <div class="mb-3">
+          <label class="form-label">选择权限组</label>
+          <select class="form-select" id="groupSelect" onchange="loadGroupPermissions()">
+            <option value="">请选择权限组</option>
+          </select>
+        </div>
+        <div id="groupPermissionsArea">
+          <p class="text-muted">请先选择权限组</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block body_script %}
+<script>
+(function(){
+  const allPermissions = [
+    {id: 'view_profile', name: '查看个人信息'},
+    {id: 'view_courses', name: '查看课程'},
+    {id: 'view_grades', name: '查看成绩'},
+    {id: 'enroll_course', name: '选课'},
+    {id: 'manage_grades', name: '管理成绩'},
+    {id: 'manage_attendance', name: '管理考勤'},
+    {id: 'manage_students', name: '管理学生'},
+    {id: 'manage_teachers', name: '管理教师'},
+    {id: 'manage_courses', name: '管理课程'},
+    {id: 'manage_classes', name: '管理班级'},
+    {id: 'manage_auth', name: '管理权限'},
+  ];
+  
+  // 加载用户列表
+  getJson('/admin_portal/auth/users/list').then(data=>{
+    const select = document.getElementById('userSelect');
+    data.items.forEach(item=>{
+      const option = document.createElement('option');
+      option.value = `${item.type}:${item.id}`;
+      option.textContent = `${item.name} (${item.type === 'student' ? '学生' : item.type === 'teacher' ? '教师' : '管理员'})`;
+      select.appendChild(option);
+    });
+  });
+  
+  // 加载权限组列表
+  getJson('/admin_portal/auth/groups/list').then(data=>{
+    const select = document.getElementById('groupSelect');
+    data.items.forEach(item=>{
+      const option = document.createElement('option');
+      option.value = item.id;
+      option.textContent = `${item.name} - ${item.description}`;
+      select.appendChild(option);
+    });
+  });
+  
+  window.loadUserPermissions = function(){
+    const value = document.getElementById('userSelect').value;
+    if(!value) {
+      document.getElementById('userPermissionsArea').innerHTML = '<p class="text-muted">请先选择用户</p>';
+      return;
+    }
+    const [userType, userId] = value.split(':');
+    getJson(`/admin_portal/auth/user/permissions?user_id=${userId}&user_type=${userType}`).then(data=>{
+      let html = '<h6>用户权限设置</h6>';
+      html += `<p class="text-muted">用户：${userId} (${userType})</p>`;
+      html += '<div class="row g-2">';
+      allPermissions.forEach(perm=>{
+        const checked = data.permissions.includes(perm.id) ? 'checked' : '';
+        html += `<div class="col-md-4">
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" id="perm_${perm.id}" value="${perm.id}" ${checked}>
+            <label class="form-check-label" for="perm_${perm.id}">${perm.name}</label>
+          </div>
+        </div>`;
+      });
+      html += '</div>';
+      html += '<div class="mt-3"><button class="btn btn-primary" onclick="saveUserPermissions()">保存权限</button></div>';
+      document.getElementById('userPermissionsArea').innerHTML = html;
+      window.currentUserId = userId;
+      window.currentUserType = userType;
+    });
+  };
+  
+  window.saveUserPermissions = function(){
+    const checkboxes = document.querySelectorAll('#userPermissionsArea input[type="checkbox"]');
+    const permissions = Array.from(checkboxes).filter(cb => cb.checked).map(cb => cb.value);
+    postJson('/admin_portal/auth/user/permissions/save', {
+      user_id: window.currentUserId,
+      user_type: window.currentUserType,
+      permissions: permissions
+    }).then(data=>{
+      if(data.ok){
+        showAlert('权限保存成功');
+      } else {
+        showAlert(data.error || '保存失败', 'danger');
+      }
+    });
+  };
+  
+  window.loadGroupPermissions = function(){
+    const groupId = document.getElementById('groupSelect').value;
+    if(!groupId) {
+      document.getElementById('groupPermissionsArea').innerHTML = '<p class="text-muted">请先选择权限组</p>';
+      return;
+    }
+    getJson(`/admin_portal/auth/group/permissions?group_id=${groupId}`).then(data=>{
+      let html = '<h6>权限组设置</h6>';
+      html += `<p class="text-muted">权限组：${groupId}</p>`;
+      html += '<div class="row g-2">';
+      allPermissions.forEach(perm=>{
+        const checked = data.permissions.includes(perm.id) ? 'checked' : '';
+        html += `<div class="col-md-4">
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" id="gperm_${perm.id}" value="${perm.id}" ${checked}>
+            <label class="form-check-label" for="gperm_${perm.id}">${perm.name}</label>
+          </div>
+        </div>`;
+      });
+      html += '</div>';
+      html += '<div class="mt-3"><button class="btn btn-primary" onclick="saveGroupPermissions()">保存权限</button></div>';
+      document.getElementById('groupPermissionsArea').innerHTML = html;
+      window.currentGroupId = groupId;
+    });
+  };
+  
+  window.saveGroupPermissions = function(){
+    const checkboxes = document.querySelectorAll('#groupPermissionsArea input[type="checkbox"]');
+    const permissions = Array.from(checkboxes).filter(cb => cb.checked).map(cb => cb.value);
+    postJson('/admin_portal/auth/group/permissions/save', {
+      group_id: window.currentGroupId,
+      permissions: permissions
+    }).then(data=>{
+      if(data.ok){
+        showAlert('权限组权限保存成功');
+      } else {
+        showAlert(data.error || '保存失败', 'danger');
+      }
+    });
+  };
+})();
+</script>
+{% endblock %}
+

@@ -1,0 +1,56 @@
+{% extends "base_staff.html" %}
+{% block title %}工作人员登录{% endblock %}
+{% block content %}
+<div class="card shadow-sm p-4">
+  <h3 class="mb-3">工作人员登录</h3>
+  <form id="loginForm" class="row g-3">
+    <div class="col-12">
+      <label class="form-label">工号</label>
+      <input class="form-control" name="emp_id" required>
+    </div>
+    <div class="col-12">
+      <label class="form-label">密码</label>
+      <input class="form-control" type="password" name="password" required>
+    </div>
+    <div class="col-12">
+      <button class="btn btn-primary" type="button" onclick="submitLogin()">登录</button>
+    </div>
+  </form>
+</div>
+{% endblock %}
+
+{% block body_script %}
+<script>
+function submitLogin(){
+  const f = document.getElementById('loginForm');
+  const data = Object.fromEntries(new FormData(f).entries());
+  if(!data.emp_id || !data.password){
+    alert('请填写工号和密码');
+    return;
+  }
+  fetch('/staff/api/login', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    credentials: 'same-origin',
+    body: JSON.stringify(data)
+  })
+  .then(response => {
+    if(!response.ok){
+      return response.json().then(err => Promise.reject(err));
+    }
+    return response.json();
+  })
+  .then(r => {
+    if(r && r.ok){
+      window.location.href = '/staff/ui';
+    }else{
+      alert(r && r.error ? r.error : '登录失败');
+    }
+  })
+  .catch(err => {
+    console.error('Login error:', err);
+    alert(err && err.error ? err.error : ('网络错误: ' + (err.message || '请检查网络连接')));
+  });
+}
+</script>
+{% endblock %}

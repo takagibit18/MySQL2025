@@ -1,0 +1,178 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}课程管理{% endblock %}
+{% block content %}
+<div class="card shadow-sm">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <h4>课程管理</h4>
+    <button class="btn btn-primary btn-sm" onclick="showEditModal('course', null)">添加课程</button>
+  </div>
+  <div class="card-body">
+    <div id="coursesTable">
+      <div class="text-center">
+        <div class="spinner-border" role="status">
+          <span class="visually-hidden">加载中...</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 更改模态框 -->
+<div class="modal fade" id="editModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="editModalTitle">更改课程信息</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div id="editModalContent"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+        <button type="button" class="btn btn-danger" id="deleteBtn" onclick="deleteItem()" style="display:none;">删除</button>
+        <button type="button" class="btn btn-primary" onclick="saveItem()">保存</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block body_script %}
+<script>
+let currentType = 'course';
+let currentId = '';
+let editModal = null;
+
+(function(){
+  editModal = new bootstrap.Modal(document.getElementById('editModal'));
+  
+  function loadCourses(){
+    getJson('/admin_portal/courses/list').then(data=>{
+      const tbody = document.getElementById('coursesTable');
+      if(data.items && data.items.length > 0){
+        let html = '<table class="table table-striped"><thead><tr><th>课程ID</th><th>课程名称</th><th>课程代码</th><th>学分</th><th>授课教师</th><th>上课时间</th><th>上课地点</th><th>状态</th><th>操作</th></tr></thead><tbody>';
+        data.items.forEach(item=>{
+          html += `<tr>
+            <td>${item.课程ID}</td>
+            <td>${item.课程名称}</td>
+            <td>${item.课程代码||''}</td>
+            <td>${item.学分}</td>
+            <td>${item.授课教师工号||''}</td>
+            <td>${item.上课时间||''}</td>
+            <td>${item.上课地点||''}</td>
+            <td>${item.课程状态==1?'开课':'停课'}</td>
+            <td><button class="btn btn-sm btn-primary" onclick="showEditModal('course', '${item.课程ID}')">更改</button></td>
+          </tr>`;
+        });
+        html += '</tbody></table>';
+        tbody.innerHTML = html;
+      } else {
+        tbody.innerHTML = '<p class="text-muted">暂无课程记录</p>';
+      }
+    });
+  }
+  
+  window.showEditModal = function(type, id){
+    currentType = type;
+    currentId = id;
+    const title = id ? '更改课程信息' : '添加课程';
+    document.getElementById('editModalTitle').textContent = title;
+    document.getElementById('deleteBtn').style.display = id ? 'inline-block' : 'none';
+    
+    if(id){
+      getJson(`/admin_portal/courses/detail?课程ID=${id}`).then(data=>{
+        if(data.item){
+          showEditForm(data.item);
+          editModal.show();
+        }
+      });
+    } else {
+      showEditForm({});
+      editModal.show();
+    }
+  };
+  
+  window.deleteItem = function(){
+    if(confirm('确定要删除这条记录吗？')){
+      postJson(`/admin_portal/courses/delete`, {课程ID: currentId}).then(data=>{
+        if(data.ok){
+          showAlert('删除成功');
+          editModal.hide();
+          loadCourses();
+        } else {
+          showAlert(data.error || '删除失败', 'danger');
+        }
+      });
+    }
+  };
+  
+  window.saveItem = function(){
+    const formData = {};
+    const inputs = document.querySelectorAll('#editModalContent input, #editModalContent select');
+    inputs.forEach(input=>{
+      if(input.name){
+        formData[input.name] = input.value;
+      }
+    });
+    
+    postJson(`/admin_portal/courses/save`, formData).then(data=>{
+      if(data.ok){
+        showAlert('保存成功');
+        editModal.hide();
+        loadCourses();
+      } else {
+        showAlert(data.error || '保存失败', 'danger');
+      }
+    });
+  };
+  
+  function showEditForm(item){
+    const isEdit = !!currentId;
+    let html = `
+      <form id="editForm">
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label">课程ID ${isEdit?'<span class="text-muted">(不可修改)</span>':''}</label>
+            <input type="text" class="form-control" name="课程ID" value="${item.课程ID||''}" ${isEdit?'readonly':''} required>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">课程名称</label>
+            <input type="text" class="form-control" name="课程名称" value="${item.课程名称||''}" required>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">课程代码</label>
+            <input type="text" class="form-control" name="课程代码" value="${item.课程代码||''}">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">学分</label>
+            <input type="number" class="form-control" name="学分" value="${item.学分||''}" step="0.1" required>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">授课教师工号</label>
+            <input type="text" class="form-control" name="授课教师工号" value="${item.授课教师工号||''}">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">上课时间</label>
+            <input type="text" class="form-control" name="上课时间" value="${item.上课时间||''}">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">上课地点</label>
+            <input type="text" class="form-control" name="上课地点" value="${item.上课地点||''}">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">课程状态</label>
+            <select class="form-select" name="课程状态" required>
+              <option value="1" ${item.课程状态==1?'selected':''}>开课</option>
+              <option value="0" ${item.课程状态==0?'selected':''}>停课</option>
+            </select>
+          </div>
+        </div>
+      </form>
+    `;
+    document.getElementById('editModalContent').innerHTML = html;
+  }
+  
+  loadCourses();
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,57 @@
+{% extends "base_staff.html" %}
+{% block title %}统计报表 - 工作人员{% endblock %}
+{% block content %}
+<div class="card shadow-sm p-3 mb-3">
+  <div class="d-flex justify-content-between align-items-center">
+    <h3 class="mb-0">统计报表</h3>
+    <a class="btn btn-outline-secondary btn-sm" href="/staff/ui">返回控制台</a>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-12 col-lg-6">
+    <div class="card shadow-sm p-0">
+      <div class="card-header">航线收入</div>
+      <div class="table-responsive">
+        <table class="table table-sm mb-0"><thead><tr><th>起飞</th><th>落地</th><th>收入</th></tr></thead><tbody id="tIncome"></tbody></table>
+      </div>
+    </div>
+  </div>
+  <div class="col-12 col-lg-6">
+    <div class="card shadow-sm p-0">
+      <div class="card-header">客座率</div>
+      <div class="table-responsive">
+        <table class="table table-sm mb-0"><thead><tr><th>航班</th><th>客座率</th></tr></thead><tbody id="tLF"></tbody></table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block body_script %}
+<script>
+function loadStats(){
+  getJson('/staff/stats/route-income').then(r=>{
+    const tb = document.getElementById('tIncome');
+    tb.innerHTML = '';
+    (r.items||[]).forEach(x=>{
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${x.出发城市}</td><td>${x.到达城市}</td><td>¥${parseFloat(x.收入 || 0).toFixed(2)}</td>`;
+      tb.appendChild(tr);
+    })
+  }).catch(()=>console.error('加载航线收入失败'));
+  getJson('/staff/stats/load-factor').then(r=>{
+    const tb = document.getElementById('tLF');
+    tb.innerHTML = '';
+    (r.items||[]).forEach(x=>{
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${x.航班号}</td><td>${((x.客座率 || 0)*100).toFixed(1)}%</td>`;
+      tb.appendChild(tr);
+    })
+  }).catch(()=>console.error('加载客座率失败'));
+}
+document.addEventListener('DOMContentLoaded', loadStats);
+</script>
+{% endblock %}
+
+

@@ -1,0 +1,15 @@
+{% extends "base_admin.html" %}
+{% block title %}系统管理员控制台{% endblock %}
+{% block content %}
+<div class="card shadow-sm p-4">
+  <h3 class="mb-3">系统管理员控制台</h3>
+  <div class="d-grid gap-2 d-md-block">
+    <a class="btn btn-primary" href="/sysadmin/ui/users">用户管理</a>
+    <a class="btn btn-primary" href="/sysadmin/ui/staff">员工权限</a>
+    <a class="btn btn-primary" href="/sysadmin/ui/flights">航班管理</a>
+    <a class="btn btn-primary" href="/sysadmin/ui/logs">系统日志</a>
+  </div>
+</div>
+{% endblock %}
+
+

@@ -1,0 +1,260 @@
+{% extends "base.html" %}
+{% block title %}考勤查询 - 学生管理系统{% endblock %}
+{% block nav_items %}
+<li class="nav-item"><a class="nav-link" href="/ui/profile">我的资料</a></li>
+<li class="nav-item"><a class="nav-link" href="/ui/courses">选课管理</a></li>
+<li class="nav-item"><a class="nav-link" href="/ui/grades">成绩查询</a></li>
+<li class="nav-item"><a class="nav-link active" href="/ui/attendance">考勤查询</a></li>
+{% endblock %}
+{% block content %}
+<div class="row">
+  <div class="col-md-8">
+    <div class="card shadow-sm mb-3">
+      <div class="card-header">
+        <h4>我的考勤记录</h4>
+      </div>
+      <div class="card-body">
+        <div id="attendanceTable">
+          <div class="text-center">
+            <div class="spinner-border" role="status">
+              <span class="visually-hidden">加载中...</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <div class="col-md-4">
+    <div class="card shadow-sm">
+      <div class="card-header">
+        <h5>请假申请</h5>
+      </div>
+      <div class="card-body">
+        <button class="btn btn-primary w-100 mb-3" onclick="showLeaveForm()">申请请假</button>
+        <div id="leaveRequestsList">
+          <p class="text-muted small">暂无请假记录</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 请假申请模态框 -->
+<div class="modal fade" id="leaveModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">请假申请</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <form id="leaveForm">
+          <div class="mb-3">
+            <label class="form-label">选择课程</label>
+            <select class="form-select" name="course_id" required>
+              <option value="">请选择课程</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">请假类型</label>
+            <select class="form-select" name="leave_type" required>
+              <option value="">请选择</option>
+              <option value="病假">病假</option>
+              <option value="事假">事假</option>
+              <option value="其他">其他</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">开始日期</label>
+            <input type="date" class="form-control" name="start_date" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">结束日期</label>
+            <input type="date" class="form-control" name="end_date" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">请假理由</label>
+            <textarea class="form-control" name="reason" rows="3" required placeholder="请详细说明请假理由"></textarea>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">病假条图片（可选）</label>
+            <input type="file" class="form-control" name="medical_certificate" accept="image/*" id="medicalFile">
+            <small class="form-text text-muted">支持jpg、png格式，最大20MB</small>
+            <div id="imagePreview" class="mt-2" style="display:none;">
+              <img id="previewImg" src="" alt="预览" style="max-width:300px; max-height:300px; border-radius:4px; border:1px solid #ddd;">
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+        <button type="button" class="btn btn-primary" onclick="submitLeave()">提交申请</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block head %}
+<style>
+.status-tag {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+}
+.status-present { background: #d4edda; color: #155724; }
+.status-late { background: #fff3cd; color: #856404; }
+.status-early { background: #ffeaa7; color: #d63031; }
+.status-absent { background: #f8d7da; color: #721c24; }
+.status-leave { background: #cce5ff; color: #004085; }
+.status-pending { background: #e2e3e5; color: #383d41; }
+.status-approved { background: #d1ecf1; color: #0c5460; }
+.status-rejected { background: #f8d7da; color: #721c24; }
+</style>
+{% endblock %}
+{% block body_script %}
+<script>
+let leaveModal = null;
+let courses = [];
+
+(function(){
+  leaveModal = new bootstrap.Modal(document.getElementById('leaveModal'));
+  
+  // 加载考勤记录
+  const statusMap = {1:'出勤', 2:'迟到', 3:'早退', 4:'缺勤', 5:'请假'};
+  getJson('/api/my-attendance').then(data=>{
+    const tbody = document.getElementById('attendanceTable');
+    if(data.items && data.items.length > 0){
+      let html = '<table class="table table-striped"><thead><tr><th>课程名称</th><th>考勤日期</th><th>考勤状态</th><th>备注</th></tr></thead><tbody>';
+      data.items.forEach(item=>{
+        const statusClass = item.考勤状态 === 1 ? 'status-present' : 
+                           item.考勤状态 === 2 ? 'status-late' :
+                           item.考勤状态 === 3 ? 'status-early' :
+                           item.考勤状态 === 4 ? 'status-absent' : 'status-leave';
+        html += `<tr>
+          <td>${item.课程名称}</td>
+          <td>${item.考勤日期}</td>
+          <td><span class="status-tag ${statusClass}">${statusMap[item.考勤状态]||item.考勤状态}</span></td>
+          <td>${item.备注||''}</td>
+        </tr>`;
+      });
+      html += '</tbody></table>';
+      tbody.innerHTML = html;
+    } else {
+      tbody.innerHTML = '<p class="text-muted">暂无考勤记录</p>';
+    }
+  });
+  
+  // 加载我的课程（用于请假申请）
+  getJson('/api/my-courses').then(data=>{
+    if(data.items){
+      courses = data.items;
+      const select = document.querySelector('#leaveForm select[name="course_id"]');
+      data.items.forEach(item=>{
+        const option = document.createElement('option');
+        option.value = item.课程ID;
+        option.textContent = item.课程名称;
+        select.appendChild(option);
+      });
+    }
+  });
+  
+  // 加载请假记录
+  loadLeaveRequests();
+  
+  // 图片预览
+  document.getElementById('medicalFile').addEventListener('change', function(e){
+    const file = e.target.files[0];
+    if(file){
+      if(file.size > 20 * 1024 * 1024){
+        showAlert('图片大小不能超过20MB', 'danger');
+        e.target.value = '';
+        document.getElementById('imagePreview').style.display = 'none';
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = function(e){
+        document.getElementById('previewImg').src = e.target.result;
+        document.getElementById('imagePreview').style.display = 'block';
+      };
+      reader.readAsDataURL(file);
+    } else {
+      document.getElementById('imagePreview').style.display = 'none';
+    }
+  });
+})();
+
+function showLeaveForm(){
+  document.getElementById('leaveForm').reset();
+  document.getElementById('imagePreview').style.display = 'none';
+  leaveModal.show();
+}
+
+function submitLeave(){
+  const form = document.getElementById('leaveForm');
+  const formData = new FormData(form);
+  
+  // 验证
+  if(!formData.get('course_id') || !formData.get('leave_type') || !formData.get('start_date') || !formData.get('end_date') || !formData.get('reason')){
+    showAlert('请填写完整信息', 'warning');
+    return;
+  }
+  
+  // 病假条图片改为可选，不再强制要求
+  
+  fetch('/api/leave-request', {
+    method: 'POST',
+    body: formData,
+    credentials: 'same-origin'
+  }).then(response => response.json()).then(data=>{
+    if(data.ok){
+      showAlert('请假申请提交成功，等待审批');
+      leaveModal.hide();
+      loadLeaveRequests();
+    } else {
+      showAlert(data.error || '提交失败', 'danger');
+    }
+  }).catch(error=>{
+    showAlert('提交失败：' + error.message, 'danger');
+  });
+}
+
+function loadLeaveRequests(){
+  getJson('/api/my-leave-requests').then(data=>{
+    const container = document.getElementById('leaveRequestsList');
+    if(data.items && data.items.length > 0){
+      let html = '';
+      data.items.forEach(item=>{
+        const statusClass = item.审批状态 === 0 ? 'status-pending' :
+                           item.审批状态 === 1 ? 'status-approved' : 'status-rejected';
+        const statusText = item.审批状态 === 0 ? '待审批' :
+                          item.审批状态 === 1 ? '已通过' : '已拒绝';
+        html += `
+          <div class="card mb-2">
+            <div class="card-body p-2">
+              <div class="d-flex justify-content-between align-items-start">
+                <div>
+                  <small class="text-muted">${item.课程名称}</small><br>
+                  <small>${item.开始日期} 至 ${item.结束日期}</small><br>
+                  <span class="status-tag ${statusClass}">${statusText}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      });
+      container.innerHTML = html;
+    } else {
+      container.innerHTML = '<p class="text-muted small">暂无请假记录</p>';
+    }
+  });
+}
+
+window.showLeaveForm = showLeaveForm;
+window.submitLeave = submitLeave;
+</script>
+{% endblock %}
+
+

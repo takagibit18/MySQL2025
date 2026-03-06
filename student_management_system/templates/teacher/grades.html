@@ -1,0 +1,163 @@
+{% extends "teacher/base_teacher.html" %}
+{% block title %}成绩管理{% endblock %}
+{% block content %}
+<div class="card shadow-sm">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <h4>成绩管理</h4>
+    <div>
+      <button class="btn btn-sm btn-primary" onclick="showExcelUpload()">Excel批量导入</button>
+    </div>
+  </div>
+  <div class="card-body">
+    <div class="mb-3">
+      <label class="form-label">选择课程</label>
+      <select class="form-select" id="courseSelect">
+        <option value="">请选择课程</option>
+      </select>
+    </div>
+    
+    <!-- Excel上传区域 -->
+    <div id="excelUploadArea" class="mb-3" style="display:none;">
+      <div class="card border-primary">
+        <div class="card-body">
+          <h6 class="card-title">Excel批量导入成绩</h6>
+          <p class="text-muted small">请上传Excel文件，格式：学号、平时成绩、期末成绩、总成绩（第一行为标题行）</p>
+          <form id="excelUploadForm" enctype="multipart/form-data">
+            {% csrf_token %}
+            <input type="hidden" id="excelCourseId" name="course_id" value="">
+            <div class="mb-2">
+              <input type="file" class="form-control" id="excelFile" name="excel_file" accept=".xlsx,.xls" required>
+            </div>
+            <button type="submit" class="btn btn-sm btn-primary">上传并导入</button>
+            <button type="button" class="btn btn-sm btn-secondary" onclick="hideExcelUpload()">取消</button>
+          </form>
+        </div>
+      </div>
+    </div>
+    
+    <div id="gradesTable">
+      <p class="text-muted">请先选择课程</p>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block body_script %}
+<script>
+(function(){
+  let courses = [];
+  getJson('/teacher/courses/list').then(data=>{
+    if(data.items){
+      courses = data.items;
+      const select = document.getElementById('courseSelect');
+      data.items.forEach(item=>{
+        const option = document.createElement('option');
+        option.value = item.课程ID;
+        option.textContent = `${item.课程名称} (${item.课程代码||''})`;
+        select.appendChild(option);
+      });
+      select.addEventListener('change', function(){
+        if(this.value){
+          loadGrades(this.value);
+        } else {
+          document.getElementById('gradesTable').innerHTML = '<p class="text-muted">请先选择课程</p>';
+        }
+      });
+    }
+  });
+  function loadGrades(courseId){
+    getJson(`/teacher/courses/students?course_id=${courseId}`).then(data=>{
+      const tbody = document.getElementById('gradesTable');
+      if(data.items && data.items.length > 0){
+        let html = '<table class="table table-striped"><thead><tr><th>学号</th><th>姓名</th><th>平时成绩</th><th>期末成绩</th><th>总成绩</th><th>操作</th></tr></thead><tbody>';
+        data.items.forEach(item=>{
+          html += `<tr>
+            <td>${item.学号}</td>
+            <td>${item.姓名}</td>
+            <td><input type="number" class="form-control form-control-sm" id="平时_${item.学号}" value="${item.平时成绩||''}" step="0.1" min="0" max="100"></td>
+            <td><input type="number" class="form-control form-control-sm" id="期末_${item.学号}" value="${item.期末成绩||''}" step="0.1" min="0" max="100"></td>
+            <td><input type="number" class="form-control form-control-sm" id="总成绩_${item.学号}" value="${item.总成绩||''}" step="0.1" min="0" max="100"></td>
+            <td><button class="btn btn-sm btn-success" onclick="saveGrade('${item.学号}', '${courseId}')">保存</button></td>
+          </tr>`;
+        });
+        html += '</tbody></table>';
+        tbody.innerHTML = html;
+      } else {
+        tbody.innerHTML = '<p class="text-muted">该课程暂无学生</p>';
+      }
+    });
+  }
+  function saveGrade(studentId, courseId){
+    const 平时成绩Input = document.getElementById(`平时_${studentId}`);
+    const 期末成绩Input = document.getElementById(`期末_${studentId}`);
+    const 总成绩Input = document.getElementById(`总成绩_${studentId}`);
+    
+    const 平时成绩 = 平时成绩Input.value.trim();
+    const 期末成绩 = 期末成绩Input.value.trim();
+    const 总成绩 = 总成绩Input.value.trim();
+    
+    // 验证至少有一项成绩
+    if(!平时成绩 && !期末成绩 && !总成绩){
+      showAlert('请至少输入一项成绩', 'warning');
+      return;
+    }
+    
+    postJson('/teacher/grades/add', {
+      学号: studentId,
+      课程ID: courseId,
+      平时成绩: 平时成绩 || null,
+      期末成绩: 期末成绩 || null,
+      总成绩: 总成绩 || null
+    }).then(data=>{
+      if(data.ok){
+        showAlert('保存成功');
+        // 重新加载成绩列表以显示更新后的数据
+        loadGrades(courseId);
+      } else {
+        showAlert(data.error || '保存失败', 'danger');
+      }
+    }).catch(error=>{
+      console.error('保存成绩失败:', error);
+      showAlert('保存失败：' + (error.message || '未知错误'), 'danger');
+    });
+  }
+  function showExcelUpload(){
+    const courseId = document.getElementById('courseSelect').value;
+    if(!courseId){
+      showAlert('请先选择课程', 'warning');
+      return;
+    }
+    document.getElementById('excelCourseId').value = courseId;
+    document.getElementById('excelUploadArea').style.display = 'block';
+  }
+  function hideExcelUpload(){
+    document.getElementById('excelUploadArea').style.display = 'none';
+    document.getElementById('excelFile').value = '';
+  }
+  document.getElementById('excelUploadForm').addEventListener('submit', function(e){
+    e.preventDefault();
+    const formData = new FormData(this);
+    fetch('/teacher/grades/import-excel', {
+      method: 'POST',
+      body: formData,
+      credentials: 'same-origin'
+    }).then(response => response.json()).then(data=>{
+      if(data.ok){
+        showAlert(`成功导入${data.count}条成绩记录`);
+        hideExcelUpload();
+        const courseId = document.getElementById('courseSelect').value;
+        if(courseId) loadGrades(courseId);
+      } else {
+        showAlert(data.error || '导入失败', 'danger');
+      }
+    }).catch(error=>{
+      showAlert('导入失败：' + error.message, 'danger');
+    });
+  });
+  window.saveGrade = saveGrade;
+  window.showExcelUpload = showExcelUpload;
+  window.hideExcelUpload = hideExcelUpload;
+})();
+</script>
+{% endblock %}
+
+

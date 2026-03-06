@@ -1,0 +1,91 @@
+{% extends "base_admin.html" %}
+{% block title %}用户管理 - 管理员{% endblock %}
+{% block content %}
+<div class="card shadow-sm p-3 mb-3">
+  <div class="d-flex justify-content-between align-items-center">
+    <h3 class="mb-0">用户管理</h3>
+    <a class="btn btn-outline-secondary btn-sm" href="/sysadmin/ui">返回控制台</a>
+  </div>
+  <div class="row g-2 mt-2">
+    <div class="col-12 col-md-6"><input id="uq" class="form-control" placeholder="用户ID/用户名/姓名"></div>
+    <div class="col-12 col-md-6 text-end"><button class="btn btn-primary" onclick="loadUsers()">查询</button></div>
+  </div>
+</div>
+
+<div class="card shadow-sm p-3 mb-3">
+  <h5>新增/编辑用户</h5>
+  <div class="row g-2">
+    <div class="col-12 col-md-4"><input class="form-control" id="u_id" placeholder="用户ID(身份证)"></div>
+    <div class="col-12 col-md-4"><input class="form-control" id="u_username" placeholder="用户名"></div>
+    <div class="col-12 col-md-4"><input class="form-control" id="u_name" placeholder="姓名"></div>
+    <div class="col-12 col-md-3">
+      <select class="form-select" id="u_gender"><option value="男">男</option><option value="女">女</option></select>
+    </div>
+    <div class="col-12 col-md-3"><input class="form-control" id="u_phone" placeholder="手机号"></div>
+    <div class="col-12 col-md-4"><input class="form-control" id="u_email" type="email" placeholder="邮箱"></div>
+    <div class="col-12 col-md-2"><input class="form-control" id="u_level" type="number" min="0" max="5" placeholder="等级"></div>
+    <div class="col-12 text-end"><button class="btn btn-primary" onclick="saveUser()">保存</button></div>
+  </div>
+</div>
+
+<div class="card shadow-sm p-0">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead><tr><th>用户ID</th><th>用户名</th><th>姓名</th><th>性别</th><th>手机号</th><th>邮箱</th><th>等级</th><th>操作</th></tr></thead>
+      <tbody id="utb"></tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block body_script %}
+<script>
+function loadUsers(){
+  const kw = document.getElementById('uq').value.trim();
+  const url = kw? `/sysadmin/users/list?q=${encodeURIComponent(kw)}` : '/sysadmin/users/list';
+  getJson(url).then(r=>{
+    const tb = document.getElementById('utb');
+    tb.innerHTML='';
+    (r.items||[]).forEach(u=>{
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${u.用户ID}</td><td>${u.用户名}</td><td>${u.姓名}</td><td>${u.性别}</td><td>${u.手机号}</td><td>${u.邮箱}</td><td>${u.会员等级}</td>
+      <td>
+        <div class="btn-group btn-group-sm">
+          <button class="btn btn-outline-primary" onclick='fillUser(${JSON.stringify(u)})'>编辑</button>
+          <button class="btn btn-outline-danger" onclick="delUser('${u.用户ID}')">删除</button>
+        </div>
+      </td>`;
+      tb.appendChild(tr);
+    })
+  })
+}
+function fillUser(u){
+  document.getElementById('u_id').value = u.用户ID;
+  document.getElementById('u_username').value = u.用户名;
+  document.getElementById('u_name').value = u.姓名;
+  document.getElementById('u_gender').value = u.性别;
+  document.getElementById('u_phone').value = u.手机号;
+  document.getElementById('u_email').value = u.邮箱;
+  document.getElementById('u_level').value = u.会员等级;
+}
+function saveUser(){
+  const payload = {
+    用户ID: document.getElementById('u_id').value.trim(),
+    用户名: document.getElementById('u_username').value.trim(),
+    姓名: document.getElementById('u_name').value.trim(),
+    性别: document.getElementById('u_gender').value,
+    手机号: document.getElementById('u_phone').value.trim(),
+    邮箱: document.getElementById('u_email').value.trim(),
+    会员等级: Number(document.getElementById('u_level').value||0),
+  };
+  postJson('/sysadmin/users/save', payload).then(r=>{ alert(r.error||'已保存'); loadUsers(); })
+}
+function delUser(id){
+  if(!confirm('确认删除该用户？')) return;
+  postJson('/sysadmin/users/delete', { 用户ID: id }).then(r=>{ alert(r.error||'已删除'); loadUsers(); })
+}
+document.addEventListener('DOMContentLoaded', loadUsers);
+</script>
+{% endblock %}
+
+

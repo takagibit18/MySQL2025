@@ -1,0 +1,90 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}ModelForm示例 - 添加学生{% endblock %}
+{% block content %}
+<div class="card shadow-sm">
+  <div class="card-header">
+    <h4>ModelForm示例 - 添加学生</h4>
+    <p class="text-muted mb-0">这是Django ModelForm的使用示例，展示了如何使用表单处理数据。</p>
+  </div>
+  <div class="card-body">
+    <form method="post" action="/admin_portal/students/save" id="studentForm">
+      {% csrf_token %}
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label">学号 <span class="text-danger">*</span></label>
+          <input type="text" class="form-control" name="学号" required>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">姓名 <span class="text-danger">*</span></label>
+          <input type="text" class="form-control" name="姓名" required>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">性别 <span class="text-danger">*</span></label>
+          <select class="form-select" name="性别" required>
+            <option value="">请选择</option>
+            <option value="M">男</option>
+            <option value="F">女</option>
+          </select>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">出生日期 <span class="text-danger">*</span></label>
+          <input type="date" class="form-control" name="出生日期" required>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">手机号 <span class="text-danger">*</span></label>
+          <input type="text" class="form-control" name="手机号" required>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">邮箱</label>
+          <input type="email" class="form-control" name="邮箱">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">班级ID</label>
+          <input type="text" class="form-control" name="班级ID">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">入学日期 <span class="text-danger">*</span></label>
+          <input type="date" class="form-control" name="入学日期" required>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">密码 <span class="text-danger">*</span></label>
+          <input type="password" class="form-control" name="密码" required>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">状态 <span class="text-danger">*</span></label>
+          <select class="form-select" name="状态" required>
+            <option value="1">在校</option>
+            <option value="0">离校</option>
+          </select>
+        </div>
+        <div class="col-12">
+          <button type="submit" class="btn btn-primary">保存</button>
+          <button type="reset" class="btn btn-secondary">重置</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+{% block body_script %}
+<script>
+document.getElementById('studentForm').addEventListener('submit', function(e){
+  e.preventDefault();
+  const formData = new FormData(this);
+  const data = {};
+  for(let [key, value] of formData.entries()){
+    data[key] = value;
+  }
+  postJson('/admin_portal/students/save', data).then(result=>{
+    if(result.ok){
+      showAlert('保存成功！');
+      this.reset();
+    } else {
+      showAlert(result.error || '保存失败', 'danger');
+    }
+  });
+});
+</script>
+{% endblock %}
+
+

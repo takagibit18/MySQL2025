@@ -1,0 +1,55 @@
+{% extends "teacher/base_teacher.html" %}
+{% block title %}我的课程{% endblock %}
+{% block content %}
+<div class="card shadow-sm">
+  <div class="card-header">
+    <h4>我的课程</h4>
+  </div>
+  <div class="card-body">
+    <div id="coursesTable">
+      <div class="text-center">
+        <div class="spinner-border" role="status">
+          <span class="visually-hidden">加载中...</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block body_script %}
+<script>
+(function(){
+  function loadCourses(){
+    getJson('/teacher/courses/list').then(data=>{
+      const tbody = document.getElementById('coursesTable');
+      if(data.items && data.items.length > 0){
+        let html = '<table class="table table-striped"><thead><tr><th>课程ID</th><th>课程名称</th><th>课程代码</th><th>学分</th><th>上课时间</th><th>上课地点</th><th>选课人数</th><th>操作</th></tr></thead><tbody>';
+        data.items.forEach(item=>{
+          html += `<tr>
+            <td>${item.课程ID}</td>
+            <td>${item.课程名称}</td>
+            <td>${item.课程代码||''}</td>
+            <td>${item.学分}</td>
+            <td>${item.上课时间||''}</td>
+            <td>${item.上课地点||''}</td>
+            <td>${item.选课人数||0}</td>
+            <td><button class="btn btn-sm btn-primary" onclick="viewStudents('${item.课程ID}')">查看学生</button></td>
+          </tr>`;
+        });
+        html += '</tbody></table>';
+        tbody.innerHTML = html;
+      } else {
+        tbody.innerHTML = '<p class="text-muted">暂无课程记录</p>';
+      }
+    });
+  }
+  function viewStudents(courseId){
+    window.location.href = `/teacher/ui/students?course_id=${courseId}`;
+  }
+  window.viewStudents = viewStudents;
+  loadCourses();
+})();
+</script>
+{% endblock %}
+
+

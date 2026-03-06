@@ -1,0 +1,175 @@
+{% extends "base.html" %}
+{% block title %}航班查询 - 机票系统{% endblock %}
+{% block content %}
+<div class="card shadow-sm p-3 mb-3">
+  <div class="d-flex justify-content-between align-items-center">
+    <h3 class="mb-0">航班查询</h3>
+    <div>
+      <a class="btn btn-sm btn-outline-secondary" href="/ui/profile">我的资料</a>
+      <a class="btn btn-sm btn-outline-secondary" href="/ui/passengers">乘客管理</a>
+    </div>
+  </div>
+  <form class="row g-3 mt-1" method="get" action="/ui/search">
+    <div class="col-12 col-md-4">
+      <label class="form-label">出发地</label>
+      <input class="form-control" type="text" name="dep" value="{{ dep|default:'' }}" required>
+    </div>
+    <div class="col-12 col-md-4">
+      <label class="form-label">目的地</label>
+      <input class="form-control" type="text" name="arr" value="{{ arr|default:'' }}" required>
+    </div>
+    <div class="col-12 col-md-4">
+      <label class="form-label">日期</label>
+      <input class="form-control" type="date" name="date" value="{{ date|default:'' }}" required>
+    </div>
+    <div class="col-12">
+      <button class="btn btn-primary" type="submit">查询</button>
+    </div>
+  </form>
+</div>
+
+<div class="card shadow-sm p-0">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead>
+        <tr>
+          <th>航班号</th>
+          <th>起飞时间</th>
+          <th>到达时间</th>
+          <th>经济舱</th>
+          <th>商务舱</th>
+          <th>头等舱</th>
+          <th>状态</th>
+          <th class="text-end">操作</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for f in flights %}
+        <tr>
+          <td>{{ f.航班号 }}</td>
+          <td>{{ f.起飞时间 }}</td>
+          <td>{{ f.到达时间 }}</td>
+          <td>¥{{ f.经济舱价格 }}</td>
+          <td>¥{{ f.商务舱价格 }}</td>
+          <td>¥{{ f.头等舱价格 }}</td>
+          <td>{{ f.航班状态 }}</td>
+          <td class="text-end">
+            <button class="btn btn-sm btn-outline-primary" onclick="showSeats('{{ f.航班号 }}')">选座下单</button>
+          </td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="8" class="text-center text-muted py-4">无结果</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- 选座/下单 Modal -->
+<div class="modal fade" id="seatModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">选择座位</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div id="seatContainer" class="row g-2"></div>
+        <hr>
+        <form id="orderForm" class="row g-3">
+          <input type="hidden" name="flight_no">
+          <div class="col-12 col-md-6">
+            <label class="form-label">选择乘客</label>
+            <select class="form-select" name="passenger_id" required></select>
+          </div>
+          <div class="col-12 col-md-4">
+            <label class="form-label">价格/舱位/座位</label>
+            <input class="form-control" name="summary" disabled>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+        <button type="button" class="btn btn-primary" onclick="submitOrder()">提交订单并支付</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block body_script %}
+<script>
+let seatModal;
+document.addEventListener('DOMContentLoaded', ()=>{
+  seatModal = new bootstrap.Modal(document.getElementById('seatModal'));
+});
+
+let currentSelection = null; // {seat_no,cabin_type,price}
+
+function badgeByType(t){ return t==3?'bg-warning':(t==2?'bg-info':'bg-secondary'); }
+
+function showSeats(flightNo){
+  Promise.all([
+    getJson(`/api/list-seats?flight_no=${encodeURIComponent(flightNo)}`),
+    getJson('/api/passengers/list')
+  ]).then(([res, psg])=>{
+    const box = document.getElementById('seatContainer');
+    box.innerHTML = '';
+    (res.items||[]).forEach(s=>{
+      const disabled = s.座位状态!=0;
+      const btn = document.createElement('button');
+      btn.type='button';
+      btn.className = `btn btn-sm ${disabled?'btn-outline-secondary':'btn-outline-success'}`;
+      btn.disabled = disabled;
+      btn.textContent = `${s.座位号} ¥${s.价格}`;
+      btn.onclick = ()=> selectSeat(flightNo, s);
+      const wrap = document.createElement('div');
+      wrap.className = 'col-4 col-md-2';
+      wrap.appendChild(btn);
+      box.appendChild(wrap);
+    });
+    document.querySelector('#orderForm [name=flight_no]').value = flightNo;
+    document.querySelector('#orderForm [name=summary]').value = '';
+    const sel = document.querySelector('#orderForm [name=passenger_id]');
+    sel.innerHTML = '';
+    (psg.items||[]).forEach(p=>{
+      const opt = document.createElement('option');
+      opt.value = p.乘客ID;
+      opt.textContent = `${p.姓名} (${p.乘客ID})`;
+      sel.appendChild(opt);
+    });
+    currentSelection = null;
+    seatModal.show();
+  });
+}
+
+function selectSeat(flightNo, s){
+  currentSelection = { seat_no: s.座位号, cabin_type: s.座位类型, price: s.价格, flight_no: flightNo };
+  document.querySelector('#orderForm [name=summary]').value = `${s.座位号} / 舱位${s.座位类型} / ¥${s.价格}`;
+}
+
+function submitOrder(){
+  const f = document.getElementById('orderForm');
+  const passenger_id = f.passenger_id.value.trim();
+  if(!currentSelection){ alert('请先选择座位'); return; }
+  if(!passenger_id){ alert('请选择乘客'); return; }
+  const payload = {
+    flight_no: currentSelection.flight_no,
+    passenger_id,
+    price: currentSelection.price,
+    cabin_type: currentSelection.cabin_type,
+    seat_no: currentSelection.seat_no
+  };
+  postJson('/api/create-order', payload).then(r=>{
+    if(r.error){ alert(r.error); return; }
+    const genOrder = r.order_no || '';
+    return postJson('/api/pay-order', { order_no: genOrder, amount: currentSelection.price, method: 1 });
+  }).then(r=>{
+    if(!r) return;
+    if(r.error){ alert(r.error); return; }
+    seatModal.hide();
+    window.location.href = '/ui/orders';
+  });
+}
+</script>
+{% endblock %}
