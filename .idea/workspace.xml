@@ -4,7 +4,14 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="0ae08acb-f1e5-4949-8099-9472d10f6d56" name="Changes" comment="Initial commit" />
+    <list default="true" id="0ae08acb-f1e5-4949-8099-9472d10f6d56" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/.idea/DatabaseTest.iml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/inspectionProfiles/profiles_settings.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/modules.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/student_management_system/static/img/img_1.png" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -18,7 +25,6 @@
     </option>
   </component>
   <component name="Git.Settings">
-    <option name="PUSH_AUTO_UPDATE" value="true" />
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
   <component name="MarkdownSettingsMigration">
@@ -33,36 +39,36 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;Python.__init__.executor&quot;: &quot;Run&quot;,
-    &quot;Python.apps.executor&quot;: &quot;Run&quot;,
-    &quot;Python.crawl_zhwiki.executor&quot;: &quot;Run&quot;,
-    &quot;Python.db.executor&quot;: &quot;Run&quot;,
-    &quot;Python.db_connect.executor&quot;: &quot;Run&quot;,
-    &quot;Python.doc.executor&quot;: &quot;Run&quot;,
-    &quot;Python.docx.executor&quot;: &quot;Run&quot;,
-    &quot;Python.edit_experiment_docx.executor&quot;: &quot;Run&quot;,
-    &quot;Python.generate_grade_excel.executor&quot;: &quot;Run&quot;,
-    &quot;Python.get_article.executor&quot;: &quot;Run&quot;,
-    &quot;Python.manage.executor&quot;: &quot;Run&quot;,
-    &quot;Python.merge_txt.executor&quot;: &quot;Run&quot;,
-    &quot;Python.ppt.executor&quot;: &quot;Run&quot;,
-    &quot;Python.report.executor&quot;: &quot;Run&quot;,
-    &quot;Python.segment_hmm.executor&quot;: &quot;Run&quot;,
-    &quot;Python.segment_mm.executor&quot;: &quot;Run&quot;,
-    &quot;Python.settings.executor&quot;: &quot;Run&quot;,
-    &quot;Python.urls.executor&quot;: &quot;Run&quot;,
-    &quot;Python.user.executor&quot;: &quot;Run&quot;,
-    &quot;Python.views.executor&quot;: &quot;Run&quot;,
-    &quot;Python.wsgi.executor&quot;: &quot;Run&quot;,
-    &quot;RunOnceActivity.OpenProjectViewOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;master&quot;,
-    &quot;last_opened_file_path&quot;: &quot;E:/PycharmProjects/amazons-mcts-python-project&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;preferences.lookFeel&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "Python.__init__.executor": "Run",
+    "Python.apps.executor": "Run",
+    "Python.crawl_zhwiki.executor": "Run",
+    "Python.db.executor": "Run",
+    "Python.db_connect.executor": "Run",
+    "Python.doc.executor": "Run",
+    "Python.docx.executor": "Run",
+    "Python.edit_experiment_docx.executor": "Run",
+    "Python.generate_grade_excel.executor": "Run",
+    "Python.get_article.executor": "Run",
+    "Python.manage.executor": "Run",
+    "Python.merge_txt.executor": "Run",
+    "Python.ppt.executor": "Run",
+    "Python.report.executor": "Run",
+    "Python.segment_hmm.executor": "Run",
+    "Python.segment_mm.executor": "Run",
+    "Python.settings.executor": "Run",
+    "Python.urls.executor": "Run",
+    "Python.user.executor": "Run",
+    "Python.views.executor": "Run",
+    "Python.wsgi.executor": "Run",
+    "RunOnceActivity.OpenProjectViewOnStart": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "git-widget-placeholder": "master",
+    "last_opened_file_path": "E:/PycharmProjects/amazons-mcts-python-project",
+    "settings.editor.selected.configurable": "preferences.lookFeel"
   }
-}</component>
+}]]></component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
       <recent name="E:\PycharmProjects\DatabaseTest\student_management_system\templates" />
@@ -90,54 +96,6 @@
       <option name="presentableId" value="Default" />
       <updated>1758024147423</updated>
     </task>
-    <task id="LOCAL-00001" summary="Initial commit">
-      <option name="closed" value="true" />
-      <created>1773064041988</created>
-      <option name="number" value="00001" />
-      <option name="presentableId" value="LOCAL-00001" />
-      <option name="project" value="LOCAL" />
-      <updated>1773064041988</updated>
-    </task>
-    <task id="LOCAL-00002" summary="Initial commit">
-      <option name="closed" value="true" />
-      <created>1773064055963</created>
-      <option name="number" value="00002" />
-      <option name="presentableId" value="LOCAL-00002" />
-      <option name="project" value="LOCAL" />
-      <updated>1773064055963</updated>
-    </task>
-    <task id="LOCAL-00003" summary="Initial commit">
-      <option name="closed" value="true" />
-      <created>1773064127908</created>
-      <option name="number" value="00003" />
-      <option name="presentableId" value="LOCAL-00003" />
-      <option name="project" value="LOCAL" />
-      <updated>1773064127908</updated>
-    </task>
-    <task id="LOCAL-00004" summary="Initial commit">
-      <option name="closed" value="true" />
-      <created>1773064194455</created>
-      <option name="number" value="00004" />
-      <option name="presentableId" value="LOCAL-00004" />
-      <option name="project" value="LOCAL" />
-      <updated>1773064194455</updated>
-    </task>
-    <option name="localTasksCounter" value="5" />
     <servers />
-  </component>
-  <component name="Vcs.Log.Tabs.Properties">
-    <option name="TAB_STATES">
-      <map>
-        <entry key="MAIN">
-          <value>
-            <State />
-          </value>
-        </entry>
-      </map>
-    </option>
-  </component>
-  <component name="VcsManagerConfiguration">
-    <MESSAGE value="Initial commit" />
-    <option name="LAST_COMMIT_MESSAGE" value="Initial commit" />
   </component>
 </project>
